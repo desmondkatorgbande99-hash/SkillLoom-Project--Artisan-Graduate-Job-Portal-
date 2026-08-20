@@ -1,0 +1,222 @@
+generator client {
+  provider     = "prisma-client"
+  output       = "../generated/prisma"
+  moduleFormat = "esm"
+}
+
+datasource db {
+  provider = "mysql"
+}
+
+model User {
+  id                  String                   @id @default(uuid()) @db.Char(36)
+  fullName            String                   @map("full_name") @db.VarChar(120)
+  email               String                   @unique
+  passwordHash        String                   @map("password_hash") @db.VarChar(255)
+  role                UserRole
+  isEmailVerified     Boolean                  @default(false) @map("is_email_verified")
+  emailVerifiedAt     DateTime?                @map("email_verified_at")
+  status              AccountStatus            @default(PENDING_VERIFICATION)
+  avatarUrl           String?                  @map("avatar_url") @db.VarChar(500)
+  lastLoginAt         DateTime?                @map("last_login_at")
+  createdAt           DateTime                 @default(now()) @map("created_at")
+  updatedAt           DateTime                 @updatedAt @map("updated_at")
+  artisanProfile      ArtisanProfile?
+  verificationTokens  EmailVerificationToken[]
+  employerProfile     EmployerProfile?
+  graduateProfile     GraduateProfile?
+  applications        JobApplication[]
+  jobs                Job[]
+  passwordResetTokens PasswordResetToken[]
+
+  @@index([role])
+  @@index([status])
+  @@map("users")
+}
+
+model EmployerProfile {
+  id             String                 @id @default(uuid()) @db.Char(36)
+  userId         String                 @unique @map("user_id") @db.Char(36)
+  companyName    String                 @map("company_name") @db.VarChar(160)
+  logoUrl        String?                @map("logo_url") @db.VarChar(500)
+  description    String?                @db.Text
+  industry       String?                @db.VarChar(100)
+  website        String?                @db.VarChar(255)
+  phone          String?                @db.VarChar(30)
+  location       String?                @db.VarChar(160)
+  approvalStatus EmployerApprovalStatus @default(PENDING) @map("approval_status")
+  approvedAt     DateTime?              @map("approved_at")
+  createdAt      DateTime               @default(now()) @map("created_at")
+  updatedAt      DateTime               @updatedAt @map("updated_at")
+  user           User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  jobs           Job[]
+
+  @@index([approvalStatus])
+  @@map("employer_profiles")
+}
+
+model GraduateProfile {
+  id           String           @id @default(uuid()) @db.Char(36)
+  userId       String           @unique @map("user_id") @db.Char(36)
+  headline     String?          @db.VarChar(160)
+  bio          String?          @db.Text
+  phone        String?          @db.VarChar(30)
+  location     String?          @db.VarChar(160)
+  education    String?          @db.Text
+  cvUrl        String?          @map("cv_url") @db.VarChar(500)
+  isAvailable  Boolean          @default(true) @map("is_available")
+  createdAt    DateTime         @default(now()) @map("created_at")
+  updatedAt    DateTime         @updatedAt @map("updated_at")
+  user         User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  applications JobApplication[]
+
+  @@index([isAvailable])
+  @@map("graduate_profiles")
+}
+
+model ArtisanProfile {
+  id              String           @id @default(uuid()) @db.Char(36)
+  userId          String           @unique @map("user_id") @db.Char(36)
+  trade           String?          @db.VarChar(120)
+  bio             String?          @db.Text
+  phone           String?          @db.VarChar(30)
+  location        String?          @db.VarChar(160)
+  yearsExperience Int?             @map("years_experience")
+  hourlyRate      Decimal?         @map("hourly_rate") @db.Decimal(10, 2)
+  contractRate    Decimal?         @map("contract_rate") @db.Decimal(12, 2)
+  currency        String           @default("NGN") @db.Char(3)
+  isAvailable     Boolean          @default(true) @map("is_available")
+  createdAt       DateTime         @default(now()) @map("created_at")
+  updatedAt       DateTime         @updatedAt @map("updated_at")
+  user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  applications    JobApplication[]
+
+  @@index([trade])
+  @@index([isAvailable])
+  @@map("artisan_profiles")
+}
+
+model EmailVerificationToken {
+  id        String    @id @default(uuid()) @db.Char(36)
+  userId    String    @map("user_id") @db.Char(36)
+  tokenHash String    @unique @map("token_hash") @db.VarChar(255)
+  expiresAt DateTime  @map("expires_at")
+  usedAt    DateTime? @map("used_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("email_verification_tokens")
+}
+
+model PasswordResetToken {
+  id        String    @id @default(uuid()) @db.Char(36)
+  userId    String    @map("user_id") @db.Char(36)
+  tokenHash String    @unique @map("token_hash") @db.VarChar(255)
+  expiresAt DateTime  @map("expires_at")
+  usedAt    DateTime? @map("used_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("password_reset_tokens")
+}
+
+model Job {
+  id                  String           @id @default(uuid()) @db.Char(36)
+  employerId          String           @map("employer_id") @db.Char(36)
+  postedById          String           @map("posted_by_id") @db.Char(36)
+  title               String           @db.VarChar(180)
+  description         String           @db.Text
+  requirements        String?          @db.Text
+  location            String?          @db.VarChar(160)
+  salaryMin           Decimal?         @map("salary_min") @db.Decimal(12, 2)
+  salaryMax           Decimal?         @map("salary_max") @db.Decimal(12, 2)
+  currency            String           @default("NGN") @db.Char(3)
+  jobType             JobType          @default(FULL_TIME) @map("job_type")
+  status              JobStatus        @default(OPEN)
+  applicationDeadline DateTime?        @map("application_deadline")
+  createdAt           DateTime         @default(now()) @map("created_at")
+  updatedAt           DateTime         @updatedAt @map("updated_at")
+  applications        JobApplication[]
+  employer            EmployerProfile  @relation(fields: [employerId], references: [id], onDelete: Cascade)
+  postedBy            User             @relation(fields: [postedById], references: [id], onDelete: Cascade)
+
+  @@index([employerId])
+  @@index([postedById])
+  @@index([status])
+  @@index([jobType])
+  @@index([location])
+  @@index([createdAt])
+  @@map("jobs")
+}
+
+model JobApplication {
+  id          String            @id @default(uuid()) @db.Char(36)
+  jobId       String            @map("job_id") @db.Char(36)
+  graduateId  String?           @map("graduate_id") @db.Char(36)
+  applicantId String            @map("applicant_id") @db.Char(36)
+  coverLetter String?           @map("cover_letter") @db.Text
+  cvUrl       String?           @map("cv_url") @db.VarChar(500)
+  status      ApplicationStatus @default(PENDING)
+  appliedAt   DateTime          @default(now()) @map("applied_at")
+  updatedAt   DateTime          @updatedAt @map("updated_at")
+  artisanId   String?           @map("artisan_id") @db.Char(36)
+  applicant   User              @relation(fields: [applicantId], references: [id], onDelete: Cascade)
+  artisan     ArtisanProfile?   @relation(fields: [artisanId], references: [id], onDelete: Cascade)
+  graduate    GraduateProfile?  @relation(fields: [graduateId], references: [id], onDelete: Cascade)
+  job         Job               @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  @@unique([jobId, applicantId])
+  @@index([jobId])
+  @@index([applicantId])
+  @@index([graduateId])
+  @@index([artisanId])
+  @@index([status])
+  @@index([appliedAt])
+  @@map("job_applications")
+}
+
+enum UserRole {
+  EMPLOYER
+  GRADUATE
+  ARTISAN
+  ADMIN
+}
+
+enum AccountStatus {
+  PENDING_VERIFICATION
+  ACTIVE
+  SUSPENDED
+}
+
+enum EmployerApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum JobType {
+  FULL_TIME
+  PART_TIME
+  CONTRACT
+  INTERNSHIP
+  FREELANCE
+}
+
+enum JobStatus {
+  DRAFT
+  OPEN
+  CLOSED
+}
+
+enum ApplicationStatus {
+  PENDING
+  REVIEWING
+  SHORTLISTED
+  REJECTED
+  HIRED
+  WITHDRAWN
+}
