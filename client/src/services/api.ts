@@ -13,18 +13,25 @@ export async function apiRequest<T>(
 
   const token = localStorage.getItem("skillloom_token");
 
-  const response = await fetch(`${API_URL}${endpoint}`, {
-    ...fetchOptions,
-    headers: {
-      "Content-Type": "application/json",
-      ...(auth && token
-        ? {
-            Authorization: `Bearer ${token}`,
-          }
-        : {}),
-      ...headers,
-    },
-  });
+  let response: Response;
+  try {
+    response = await fetch(`${API_URL}${endpoint}`, {
+      ...fetchOptions,
+      headers: {
+        "Content-Type": "application/json",
+        ...(auth && token
+          ? {
+              Authorization: `Bearer ${token}`,
+            }
+          : {}),
+        ...headers,
+      },
+    });
+  } catch {
+    throw new Error(
+      `Unable to connect to the SkillLoom API at ${API_URL}. Please verify the backend server is running and reachable.`,
+    );
+  }
 
   const data = await response.json().catch(() => null);
 
