@@ -15,9 +15,33 @@ const app = express();
 
 app.use(helmet());
 
+const rawOrigins = [
+  process.env.CLIENT_URL,
+  process.env.FRONTEND_URL,
+  "http://localhost:5173",
+  "http://127.0.0.1:5173",
+]
+  .filter(Boolean)
+  .flatMap((val) => (val as string).split(","))
+  .map((val) => val.trim().replace(/\/$/, ""))
+  .filter(Boolean);
+
+const allowedOrigins = Array.from(new Set(rawOrigins));
+
 app.use(
   cors({
-    origin: process.env.CLIENT_URL || "http://localhost:5173",
+    origin: (origin, callback) => {
+      if (
+        !origin ||
+        allowedOrigins.includes(origin) ||
+        process.env.NODE_ENV !== "production"
+      ) {
+        callback(null, true);
+      } else {
+        callback(new Error(`Origin ${origin} not allowed by CORS`));
+      }
+    },
+    credentials: true,
   })
 );
 

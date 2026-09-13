@@ -1,5 +1,6 @@
 import {
   createContext,
+  useCallback,
   useContext,
   useEffect,
   useMemo,
@@ -100,7 +101,7 @@ export function AuthProvider({
    * If the token is invalid, authentication
    * is cleared.
    */
-  const refreshUser = async () => {
+  const refreshUser = useCallback(async () => {
     const currentToken = getAuthToken();
 
     if (!currentToken) {
@@ -166,15 +167,16 @@ export function AuthProvider({
        * This is especially important immediately
        * after login.
        */
-      if (!user && !token) {
-        clearAuthToken();
-
-        setUser(null);
-        setProfile(null);
-        setToken(null);
-      }
+      setUser((prevUser) => {
+        if (!prevUser) {
+          clearAuthToken();
+          setProfile(null);
+          setToken(null);
+        }
+        return prevUser;
+      });
     }
-  };
+  }, []);
 
   useEffect(() => {
     const initializeAuth = async () => {
@@ -186,7 +188,7 @@ export function AuthProvider({
     };
 
     void initializeAuth();
-  }, []);
+  }, [refreshUser]);
 
   const login = async ({
     email,
@@ -307,6 +309,7 @@ export function AuthProvider({
       profile,
       token,
       isLoading,
+      refreshUser,
     ],
   );
 
@@ -317,6 +320,7 @@ export function AuthProvider({
   );
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function useAuth() {
   const context =
     useContext(AuthContext);

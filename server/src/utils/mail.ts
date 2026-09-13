@@ -1,17 +1,20 @@
 import { Resend } from "resend";
 
-const resendApiKey = process.env.RESEND_API_KEY;
-const mailFromEnv = process.env.MAIL_FROM;
+function getResendClient(): { resend: Resend; mailFrom: string } {
+  const resendApiKey = process.env.RESEND_API_KEY;
+  const mailFromEnv = process.env.MAIL_FROM;
 
-if (!resendApiKey || !mailFromEnv) {
-  throw new Error(
-    "Email configuration is missing. RESEND_API_KEY and MAIL_FROM are required."
-  );
+  if (!resendApiKey || !mailFromEnv) {
+    throw new Error(
+      "Email configuration is missing. RESEND_API_KEY and MAIL_FROM are required."
+    );
+  }
+
+  return {
+    resend: new Resend(resendApiKey),
+    mailFrom: mailFromEnv,
+  };
 }
-
-const verifiedMailFrom: string = mailFromEnv;
-
-const resend = new Resend(resendApiKey);
 
 export async function sendEmail(
   to: string,
@@ -19,9 +22,11 @@ export async function sendEmail(
   html: string
 ) {
   try {
+    const { resend, mailFrom } = getResendClient();
+
     const { data, error } =
       await resend.emails.send({
-        from: verifiedMailFrom,
+        from: mailFrom,
         to,
         subject,
         html,

@@ -9,7 +9,9 @@ const VERIFICATION_TOKEN_EXPIRY_HOURS = 24;
 
 function getVerificationUrl(token: string): string {
   const frontendUrl =
-    process.env.FRONTEND_URL || "http://localhost:5173";
+    process.env.FRONTEND_URL ||
+    process.env.CLIENT_URL ||
+    "http://localhost:5173";
 
   return `${frontendUrl}/verify-email?token=${encodeURIComponent(
     token

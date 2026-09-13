@@ -9,10 +9,7 @@ import DashboardPage from "./pages/DashboardPage";
 
 import { useAuth } from "./context/AuthContext";
 
-type Role =
-  | "graduate"
-  | "artisan"
-  | "employer";
+type Role = "graduate" | "artisan" | "employer";
 
 type AuthView =
   | "landing"
@@ -187,18 +184,16 @@ function App() {
   const [location, setLocation] =
     useState("");
 
-  /*
+  /**
    * Detect the current frontend route.
    *
    * Dashboard routes:
-   *
    * /dashboard/graduate
    * /dashboard/artisan
    * /dashboard/employer
    * /dashboard/admin
    *
    * Verification route:
-   *
    * /verify-email?token=...
    */
   const pathname =
@@ -293,6 +288,7 @@ function App() {
 
   const openLogin = () => {
     setMobileMenuOpen(false);
+
     setAuthView("login");
 
     window.history.replaceState(
@@ -309,6 +305,7 @@ function App() {
 
   const openRegister = () => {
     setMobileMenuOpen(false);
+
     setAuthView("register");
 
     window.history.replaceState(
@@ -327,7 +324,9 @@ function App() {
     email: string,
   ) => {
     setMobileMenuOpen(false);
+
     setVerificationEmail(email);
+
     setAuthView("verify");
 
     window.scrollTo({
@@ -338,6 +337,7 @@ function App() {
 
   const returnToLanding = () => {
     setAuthView("landing");
+
     setMobileMenuOpen(false);
 
     window.history.replaceState(
@@ -352,7 +352,7 @@ function App() {
     });
   };
 
-  /*
+  /**
    * Authentication pages.
    */
   if (authView === "login") {
@@ -361,17 +361,19 @@ function App() {
         onBack={returnToLanding}
         onRegister={openRegister}
         onSuccess={() => {
-          /*
-           * Do NOT return to landing after login.
+          /**
+           * Login has succeeded.
            *
            * AuthContext has already populated:
-           * user
-           * token
-           * profile
+           * - user
+           * - token
+           * - profile
            *
-           * The authenticated routing block
-           * below will render the correct dashboard.
+           * Changing the auth view allows App()
+           * to continue to the authenticated
+           * dashboard routing block below.
            */
+          setAuthView("landing");
         }}
         onVerificationRequired={
           openVerification
@@ -400,7 +402,7 @@ function App() {
     );
   }
 
-  /*
+  /**
    * Prevent the landing page from briefly
    * rendering while authentication state
    * is being restored.
@@ -460,7 +462,7 @@ function App() {
     );
   }
 
-  /*
+  /**
    * ROLE-BASED DASHBOARD ROUTING
    *
    * Authenticated users are routed according
@@ -478,10 +480,13 @@ function App() {
     > = {
       GRADUATE:
         "/dashboard/graduate",
+
       ARTISAN:
         "/dashboard/artisan",
+
       EMPLOYER:
         "/dashboard/employer",
+
       ADMIN:
         "/dashboard/admin",
     };
@@ -489,7 +494,7 @@ function App() {
     const expectedPath =
       rolePathMap[user.role];
 
-    /*
+    /**
      * If the authenticated user opened a
      * dashboard URL directly, keep that URL.
      *
@@ -524,7 +529,7 @@ function App() {
     );
   }
 
-  /*
+  /**
    * Public landing page.
    */
   return (
@@ -672,6 +677,7 @@ function App() {
             <div className="hero-copy">
               <div className="eyebrow">
                 <span className="eyebrow-dot" />
+
                 Connecting talent with
                 opportunity
               </div>
@@ -679,6 +685,7 @@ function App() {
               <h1>
                 Your skills.
                 <br />
+
                 <span>
                   Your opportunity.
                 </span>
