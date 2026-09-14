@@ -5,6 +5,8 @@ import "./App.css";
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
 import VerifyEmailPage from "./pages/VerifyEmailPage";
+import ForgotPasswordPage from "./pages/ForgotPasswordPage";
+import ResetPasswordPage from "./pages/ResetPasswordPage";
 import DashboardPage from "./pages/DashboardPage";
 
 import { useAuth } from "./context/AuthContext";
@@ -15,7 +17,9 @@ type AuthView =
   | "landing"
   | "login"
   | "register"
-  | "verify";
+  | "verify"
+  | "forgot-password"
+  | "reset-password";
 
 const featuredJobs = [
   {
@@ -215,6 +219,14 @@ function App() {
       return "verify";
     }
 
+    if (
+      (pathname === "/reset-password" ||
+        pathname === "/reset-password/") &&
+      verificationToken
+    ) {
+      return "reset-password";
+    }
+
     return "landing";
   };
 
@@ -352,6 +364,17 @@ function App() {
     });
   };
 
+  const openForgotPassword = () => {
+    setMobileMenuOpen(false);
+
+    setAuthView("forgot-password");
+
+    window.scrollTo({
+      top: 0,
+      behavior: "smooth",
+    });
+  };
+
   /**
    * Authentication pages.
    */
@@ -360,6 +383,7 @@ function App() {
       <LoginPage
         onBack={returnToLanding}
         onRegister={openRegister}
+        onForgotPassword={openForgotPassword}
         onSuccess={() => {
           /**
            * Login has succeeded.
@@ -398,6 +422,24 @@ function App() {
         email={verificationEmail}
         onBack={returnToLanding}
         onLogin={openLogin}
+      />
+    );
+  }
+
+  if (authView === "forgot-password") {
+    return (
+      <ForgotPasswordPage
+        onBackToLogin={openLogin}
+        onBackToLanding={returnToLanding}
+      />
+    );
+  }
+
+  if (authView === "reset-password") {
+    return (
+      <ResetPasswordPage
+        onBackToLogin={openLogin}
+        onBackToLanding={returnToLanding}
       />
     );
   }

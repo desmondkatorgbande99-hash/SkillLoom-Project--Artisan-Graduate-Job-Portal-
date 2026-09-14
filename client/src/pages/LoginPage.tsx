@@ -18,6 +18,7 @@ interface LoginPageProps {
   onVerificationRequired: (
     email: string,
   ) => void;
+  onForgotPassword: () => void;
 }
 
 export default function LoginPage({
@@ -25,6 +26,7 @@ export default function LoginPage({
   onRegister,
   onSuccess,
   onVerificationRequired,
+  onForgotPassword,
 }: LoginPageProps) {
   const { login } = useAuth();
 
@@ -151,9 +153,33 @@ export default function LoginPage({
           </div>
 
           <div className="auth-field">
-            <label htmlFor="login-password">
-              Password
-            </label>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+              }}
+            >
+              <label htmlFor="login-password">
+                Password
+              </label>
+
+              <button
+                type="button"
+                onClick={onForgotPassword}
+                style={{
+                  background: "transparent",
+                  border: "none",
+                  color: "#2563eb",
+                  fontSize: "13px",
+                  fontWeight: 600,
+                  cursor: "pointer",
+                  padding: 0,
+                }}
+              >
+                Forgot password?
+              </button>
+            </div>
 
             <div className="auth-input-wrapper">
               <Lock size={18} />

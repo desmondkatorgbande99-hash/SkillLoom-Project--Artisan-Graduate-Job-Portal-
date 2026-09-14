@@ -1,22 +1,25 @@
+import crypto from "node:crypto";
 import prisma from "../config/database";
-import {
-  generateVerificationToken,
-  hashVerificationToken,
-} from "../utils/email-verification";
 import { sendEmail } from "../utils/mail";
 
-const VERIFICATION_TOKEN_EXPIRY_HOURS = 24;
+const RESET_TOKEN_EXPIRY_HOURS = 1;
 
-function getVerificationUrl(token: string): string {
+function generateResetToken(): string {
+  return crypto.randomBytes(32).toString("hex");
+}
+
+function hashResetToken(token: string): string {
+  return crypto.createHash("sha256").update(token).digest("hex");
+}
+
+function getResetUrl(token: string): string {
   const frontendUrl = (
     process.env.FRONTEND_URL ||
     process.env.CLIENT_URL ||
     "http://localhost:5173"
   ).replace(/\/+$/, "");
 
-  return `${frontendUrl}/verify-email?token=${encodeURIComponent(
-    token
-  )}`;
+  return `${frontendUrl}/reset-password?token=${encodeURIComponent(token)}`;
 }
 
 function escapeHtml(value: string): string {
@@ -28,15 +31,13 @@ function escapeHtml(value: string): string {
     .replace(/'/g, "&#039;");
 }
 
-export async function createAndSendVerificationEmail(
+export async function createAndSendPasswordResetEmail(
   userId: string,
   email: string,
   fullName: string
-) {
-  /*
-   * Invalidate any previous unused verification tokens.
-   */
-  await prisma.emailVerificationToken.updateMany({
+): Promise<void> {
+  // Invalidate any existing unused reset tokens for this user
+  await prisma.passwordResetToken.updateMany({
     where: {
       userId,
       usedAt: null,
@@ -46,19 +47,11 @@ export async function createAndSendVerificationEmail(
     },
   });
 
-  const rawToken = generateVerificationToken();
+  const rawToken = generateResetToken();
+  const tokenHash = hashResetToken(rawToken);
+  const expiresAt = new Date(Date.now() + RESET_TOKEN_EXPIRY_HOURS * 60 * 60 * 1000);
 
-  const tokenHash = hashVerificationToken(rawToken);
-
-  const expiresAt = new Date(
-    Date.now() +
-      VERIFICATION_TOKEN_EXPIRY_HOURS *
-        60 *
-        60 *
-        1000
-  );
-
-  await prisma.emailVerificationToken.create({
+  await prisma.passwordResetToken.create({
     data: {
       userId,
       tokenHash,
@@ -66,7 +59,7 @@ export async function createAndSendVerificationEmail(
     },
   });
 
-  const verificationUrl = getVerificationUrl(rawToken);
+  const resetUrl = getResetUrl(rawToken);
   const safeFullName = escapeHtml(fullName);
 
   const html = `
@@ -74,13 +67,9 @@ export async function createAndSendVerificationEmail(
     <html lang="en">
       <head>
         <meta charset="UTF-8" />
-        <meta
-          name="viewport"
-          content="width=device-width, initial-scale=1.0"
-        />
-        <title>Verify your SkillLoom account</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Reset your SkillLoom password</title>
       </head>
-
       <body
         style="
           margin: 0;
@@ -107,43 +96,25 @@ export async function createAndSendVerificationEmail(
               color: #ffffff;
             "
           >
-            <h1 style="margin: 0; font-size: 28px;">
-              SkillLoom
-            </h1>
-
-            <p
-              style="
-                margin: 8px 0 0;
-                color: #d1d5db;
-              "
-            >
+            <h1 style="margin: 0; font-size: 28px;">SkillLoom</h1>
+            <p style="margin: 8px 0 0; color: #d1d5db;">
               Weaving skills into opportunity.
             </p>
           </div>
 
           <div style="padding: 32px;">
-            <h2
-              style="
-                margin-top: 0;
-                color: #111827;
-              "
-            >
-              Verify your email address
-            </h2>
+            <h2 style="margin-top: 0; color: #111827;">Reset your password</h2>
+
+            <p>Hello ${safeFullName},</p>
 
             <p>
-              Hello ${safeFullName},
-            </p>
-
-            <p>
-              Thank you for creating your SkillLoom account.
-              Please verify your email address to activate
-              your account.
+              We received a request to reset your password for your SkillLoom account.
+              Click the button below to choose a new password:
             </p>
 
             <p style="margin: 32px 0;">
               <a
-                href="${verificationUrl}"
+                href="${resetUrl}"
                 style="
                   display: inline-block;
                   padding: 14px 24px;
@@ -154,18 +125,17 @@ export async function createAndSendVerificationEmail(
                   font-weight: bold;
                 "
               >
-                Verify Email Address
+                Reset Password
               </a>
             </p>
 
             <p>
-              This verification link will expire in
-              <strong>24 hours</strong>.
+              This link is valid for <strong>1 hour</strong>.
             </p>
 
             <p>
-              If you did not create this account, you can
-              safely ignore this email.
+              If you didn't request a password reset, you can safely ignore this email.
+              Your password will remain unchanged.
             </p>
 
             <p style="margin-top: 32px;">
@@ -178,9 +148,6 @@ export async function createAndSendVerificationEmail(
     </html>
   `;
 
-  return sendEmail(
-    email,
-    "Verify your SkillLoom account",
-    html
-  );
+  await sendEmail(email, "Reset your SkillLoom password", html);
 }
+export { hashResetToken };
