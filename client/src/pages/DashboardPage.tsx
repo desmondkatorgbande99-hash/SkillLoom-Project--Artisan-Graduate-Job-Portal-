@@ -412,6 +412,105 @@ function DashboardPage({ onLogout }: DashboardPageProps) {
   const [isDashboardLoading, setIsDashboardLoading] = useState(false);
   const [dashboardError, setDashboardError] = useState("");
 
+  const [selectedJobForDetails, setSelectedJobForDetails] = useState<Job | null>(null);
+  const [selectedJobForApply, setSelectedJobForApply] = useState<Job | null>(null);
+  const [isApplying, setIsApplying] = useState(false);
+  const [applySuccessMessage, setApplySuccessMessage] = useState("");
+  const [applyErrorMessage, setApplyErrorMessage] = useState("");
+  const [jobSearchTerm, setJobSearchTerm] = useState("");
+  const [jobCategoryFilter, setJobCategoryFilter] = useState("All");
+
+  const appliedJobIds = useMemo(() => {
+    return new Set(
+      applications.map((app) => (app as any).jobId || app.job?.id).filter(Boolean)
+    );
+  }, [applications]);
+
+  const handleConfirmApply = async (jobId: string) => {
+    try {
+      setIsApplying(true);
+      setApplyErrorMessage("");
+
+      await apiRequest("/applications", {
+        method: "POST",
+        auth: true,
+        body: JSON.stringify({ jobId }),
+      });
+
+      const updatedApplications = await apiRequest<ApplicationsResponse>(
+        "/applications/my-applications",
+        {
+          method: "GET",
+          auth: true,
+        }
+      );
+      setApplications(extractApplications(updatedApplications));
+
+      setSelectedJobForApply(null);
+      setApplySuccessMessage(
+        "Application submitted successfully! Check 'My Applications' to track your status."
+      );
+
+      setTimeout(() => {
+        setApplySuccessMessage("");
+      }, 6000);
+    } catch (err) {
+      setApplyErrorMessage(
+        err instanceof Error ? err.message : "Failed to apply for job."
+      );
+    } finally {
+      setIsApplying(false);
+    }
+  };
+
+  const filteredAvailableJobs = useMemo(() => {
+    return jobs.filter((job) => {
+      if (job.status !== "OPEN") return false;
+
+      const titleLower = job.title.toLowerCase();
+      const descLower = (job.description || "").toLowerCase();
+
+      const matchesCategory =
+        jobCategoryFilter === "All" ||
+        (jobCategoryFilter === "Technology" &&
+          (titleLower.includes("developer") ||
+            titleLower.includes("data") ||
+            titleLower.includes("designer") ||
+            descLower.includes("software"))) ||
+        (jobCategoryFilter === "Skilled Trades" &&
+          (titleLower.includes("electrician") ||
+            titleLower.includes("plumb") ||
+            titleLower.includes("mechanic") ||
+            titleLower.includes("welder") ||
+            titleLower.includes("carpenter"))) ||
+        (jobCategoryFilter === "Fashion & Design" &&
+          (titleLower.includes("tailor") ||
+            titleLower.includes("fashion") ||
+            titleLower.includes("designer"))) ||
+        (jobCategoryFilter === "Construction" &&
+          (titleLower.includes("carpenter") ||
+            titleLower.includes("construction") ||
+            titleLower.includes("woodworker") ||
+            titleLower.includes("electrician"))) ||
+        (jobCategoryFilter === "Business & Finance" &&
+          (titleLower.includes("marketing") ||
+            titleLower.includes("operations") ||
+            titleLower.includes("finance") ||
+            titleLower.includes("analyst")));
+
+      const searchLower = jobSearchTerm.trim().toLowerCase();
+      const matchesSearch =
+        !searchLower ||
+        titleLower.includes(searchLower) ||
+        (job.employer?.companyName &&
+          job.employer.companyName.toLowerCase().includes(searchLower)) ||
+        (job.location && job.location.toLowerCase().includes(searchLower)) ||
+        descLower.includes(searchLower);
+
+      return matchesCategory && matchesSearch;
+    });
+  }, [jobs, jobCategoryFilter, jobSearchTerm]);
+
   useEffect(() => {
     if (!user) {
       return;
@@ -1298,6 +1397,32 @@ function DashboardPage({ onLogout }: DashboardPageProps) {
               </article>
             </section>
 
+            {applySuccessMessage && (
+              <div
+                style={{
+                  marginTop: "24px",
+                  padding: "16px 20px",
+                  borderRadius: "14px",
+                  background: "#f0fdf4",
+                  border: "1px solid #bbf7d0",
+                  color: "#166534",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: "12px",
+                }}
+              >
+                <span>🎉 <strong>Success:</strong> {applySuccessMessage}</span>
+                <button
+                  type="button"
+                  onClick={() => setApplySuccessMessage("")}
+                  style={{ border: "none", background: "transparent", color: "#166534", cursor: "pointer", fontWeight: "bold" }}
+                >
+                  ✕
+                </button>
+              </div>
+            )}
+
             <section
               style={{
                 marginTop: "24px",
@@ -1321,7 +1446,7 @@ function DashboardPage({ onLogout }: DashboardPageProps) {
               >
                 <div>
                   <h2 style={{ margin: 0, fontSize: "22px" }}>
-                    Available Jobs
+                    Available Opportunities
                   </h2>
 
                   <p
@@ -1331,14 +1456,13 @@ function DashboardPage({ onLogout }: DashboardPageProps) {
                       fontSize: "14px",
                     }}
                   >
-                    Discover open opportunities available on
-                    SkillLoom.
+                    Discover and apply for open positions matching your skills and interests.
                   </p>
                 </div>
 
                 <span
                   style={{
-                    padding: "7px 10px",
+                    padding: "7px 12px",
                     borderRadius: "999px",
                     background: "#f0fdf4",
                     color: "#15803d",
@@ -1346,9 +1470,79 @@ function DashboardPage({ onLogout }: DashboardPageProps) {
                     fontWeight: 700,
                   }}
                 >
-                  {jobs.filter((job) => job.status === "OPEN").length}{" "}
-                  available
+                  {filteredAvailableJobs.length} open position{filteredAvailableJobs.length === 1 ? "" : "s"}
                 </span>
+              </div>
+
+              {/* Filters and Search Bar */}
+              <div
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "14px",
+                  marginBottom: "24px",
+                  paddingBottom: "20px",
+                  borderBottom: "1px solid #f1f5f9",
+                }}
+              >
+                {/* Search input */}
+                <input
+                  type="text"
+                  placeholder="🔍 Search jobs by title, company, location, or skills..."
+                  value={jobSearchTerm}
+                  onChange={(e) => setJobSearchTerm(e.target.value)}
+                  style={{
+                    width: "100%",
+                    padding: "12px 16px",
+                    borderRadius: "12px",
+                    border: "1px solid #cbd5e1",
+                    fontSize: "14px",
+                    outline: "none",
+                    background: "#f8fafc",
+                  }}
+                />
+
+                {/* Category Pills */}
+                <div
+                  style={{
+                    display: "flex",
+                    gap: "8px",
+                    overflowX: "auto",
+                    paddingBottom: "4px",
+                  }}
+                >
+                  {[
+                    "All",
+                    "Technology",
+                    "Skilled Trades",
+                    "Fashion & Design",
+                    "Construction",
+                    "Business & Finance",
+                  ].map((category) => {
+                    const isSelected = jobCategoryFilter === category;
+                    return (
+                      <button
+                        key={category}
+                        type="button"
+                        onClick={() => setJobCategoryFilter(category)}
+                        style={{
+                          padding: "7px 14px",
+                          borderRadius: "999px",
+                          border: isSelected ? "1px solid #2563eb" : "1px solid #e2e8f0",
+                          background: isSelected ? "#2563eb" : "#ffffff",
+                          color: isSelected ? "#ffffff" : "#475569",
+                          fontSize: "13px",
+                          fontWeight: isSelected ? 700 : 500,
+                          cursor: "pointer",
+                          whiteSpace: "nowrap",
+                          transition: "all 0.15s ease",
+                        }}
+                      >
+                        {category}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
 
               {isDashboardLoading ? (
@@ -1361,11 +1555,10 @@ function DashboardPage({ onLogout }: DashboardPageProps) {
                 >
                   Loading available jobs...
                 </div>
-              ) : jobs.filter((job) => job.status === "OPEN").length ===
-                0 ? (
+              ) : filteredAvailableJobs.length === 0 ? (
                 <div
                   style={{
-                    padding: "32px 20px",
+                    padding: "40px 20px",
                     borderRadius: "14px",
                     background: "#f8fafc",
                     textAlign: "center",
@@ -1377,121 +1570,604 @@ function DashboardPage({ onLogout }: DashboardPageProps) {
                       display: "block",
                       color: "#334155",
                       marginBottom: "6px",
+                      fontSize: "16px",
                     }}
                   >
-                    No open jobs found
+                    No jobs match your criteria
                   </strong>
-
-                  Check back later for new opportunities.
+                  Try selecting another category or clearing your search query.
                 </div>
               ) : (
                 <div
                   style={{
                     display: "grid",
                     gridTemplateColumns:
-                      "repeat(auto-fit, minmax(260px, 1fr))",
-                    gap: "16px",
+                      "repeat(auto-fit, minmax(280px, 1fr))",
+                    gap: "18px",
                   }}
                 >
-                  {jobs
-                    .filter((job) => job.status === "OPEN")
-                    .slice(0, 6)
-                    .map((job) => (
+                  {filteredAvailableJobs.map((job) => {
+                    const isApplied = appliedJobIds.has(job.id);
+
+                    return (
                       <article
                         key={job.id}
                         style={{
                           border: "1px solid #e2e8f0",
-                          borderRadius: "16px",
-                          padding: "20px",
+                          borderRadius: "18px",
+                          padding: "22px",
+                          display: "flex",
+                          flexDirection: "column",
+                          justifyContent: "space-between",
+                          background: "#ffffff",
+                          transition: "box-shadow 0.2s ease",
+                          boxShadow: "0 2px 8px rgba(15, 23, 42, 0.03)",
                         }}
                       >
-                        <span
-                          style={{
-                            display: "inline-block",
-                            padding: "5px 9px",
-                            borderRadius: "999px",
-                            background: "#eff6ff",
-                            color: "#1d4ed8",
-                            fontSize: "11px",
-                            fontWeight: 700,
-                            textTransform: "uppercase",
-                          }}
-                        >
-                          {job.jobType}
-                        </span>
+                        <div>
+                          <div
+                            style={{
+                              display: "flex",
+                              justifyContent: "space-between",
+                              alignItems: "center",
+                              gap: "8px",
+                              marginBottom: "12px",
+                            }}
+                          >
+                            <span
+                              style={{
+                                display: "inline-block",
+                                padding: "4px 8px",
+                                borderRadius: "999px",
+                                background: "#eff6ff",
+                                color: "#1d4ed8",
+                                fontSize: "11px",
+                                fontWeight: 700,
+                                textTransform: "uppercase",
+                              }}
+                            >
+                              {job.jobType.replace("_", " ")}
+                            </span>
 
-                        <h3
-                          style={{
-                            margin: "14px 0 6px",
-                            fontSize: "18px",
-                          }}
-                        >
-                          {job.title}
-                        </h3>
-
-                        <p
-                          style={{
-                            margin: "0 0 12px",
-                            color: "#64748b",
-                            fontSize: "13px",
-                            lineHeight: 1.6,
-                          }}
-                        >
-                          {job.employer?.companyName ??
-                            "SkillLoom Employer"}
-                        </p>
-
-                        <div
-                          style={{
-                            display: "grid",
-                            gap: "7px",
-                            color: "#475569",
-                            fontSize: "13px",
-                          }}
-                        >
-                          <span>
-                            📍{" "}
-                            {job.location ??
-                              "Location not specified"}
-                          </span>
-
-                          <span>
-                            💰{" "}
-                            {formatSalary(
-                              job.salaryMin,
-                              job.salaryMax,
-                              job.currency ?? "NGN",
+                            {isApplied && (
+                              <span
+                                style={{
+                                  display: "inline-block",
+                                  padding: "4px 8px",
+                                  borderRadius: "999px",
+                                  background: "#dcfce7",
+                                  color: "#166534",
+                                  fontSize: "11px",
+                                  fontWeight: 700,
+                                }}
+                              >
+                                ✓ Applied
+                              </span>
                             )}
-                          </span>
+                          </div>
 
-                          <span>
-                            📅 Deadline:{" "}
-                            {formatDate(job.applicationDeadline)}
-                          </span>
+                          <h3
+                            style={{
+                              margin: "0 0 6px",
+                              fontSize: "18px",
+                              color: "#0f172a",
+                              fontWeight: 700,
+                            }}
+                          >
+                            {job.title}
+                          </h3>
+
+                          <p
+                            style={{
+                              margin: "0 0 14px",
+                              color: "#2563eb",
+                              fontSize: "13px",
+                              fontWeight: 600,
+                            }}
+                          >
+                            {job.employer?.companyName ?? "SkillLoom Verified Employer"}
+                          </p>
+
+                          <div
+                            style={{
+                              display: "grid",
+                              gap: "6px",
+                              color: "#475569",
+                              fontSize: "13px",
+                              marginBottom: "14px",
+                            }}
+                          >
+                            <span>📍 {job.location ?? "Location not specified"}</span>
+                            <span style={{ fontWeight: 600, color: "#0f172a" }}>
+                              💰 {formatSalary(job.salaryMin, job.salaryMax, job.currency ?? "NGN")}
+                            </span>
+                            <span style={{ color: "#94a3b8", fontSize: "12px" }}>
+                              📅 Deadline: {formatDate(job.applicationDeadline)}
+                            </span>
+                          </div>
+
+                          <p
+                            style={{
+                              color: "#64748b",
+                              fontSize: "13px",
+                              lineHeight: 1.6,
+                              margin: "0 0 16px",
+                            }}
+                          >
+                            {job.description
+                              ? job.description.slice(0, 110) +
+                                (job.description.length > 110 ? "..." : "")
+                              : "No job description provided."}
+                          </p>
                         </div>
 
                         <div
                           style={{
+                            display: "flex",
+                            gap: "10px",
                             marginTop: "16px",
-                            paddingTop: "14px",
+                            paddingTop: "16px",
                             borderTop: "1px solid #f1f5f9",
-                            color: "#64748b",
-                            fontSize: "12px",
-                            lineHeight: 1.6,
                           }}
                         >
-                          {job.description
-                            ? job.description.slice(0, 120) +
-                              (job.description.length > 120
-                                ? "..."
-                                : "")
-                            : "No job description provided."}
+                          <button
+                            type="button"
+                            onClick={() => setSelectedJobForDetails(job)}
+                            style={{
+                              flex: 1,
+                              padding: "10px 14px",
+                              borderRadius: "10px",
+                              border: "1px solid #cbd5e1",
+                              background: "#ffffff",
+                              color: "#334155",
+                              fontSize: "13px",
+                              fontWeight: 600,
+                              cursor: "pointer",
+                            }}
+                          >
+                            View Details
+                          </button>
+
+                          {isApplied ? (
+                            <button
+                              type="button"
+                              disabled
+                              style={{
+                                flex: 1,
+                                padding: "10px 14px",
+                                borderRadius: "10px",
+                                border: "none",
+                                background: "#f1f5f9",
+                                color: "#94a3b8",
+                                fontSize: "13px",
+                                fontWeight: 700,
+                                cursor: "default",
+                              }}
+                            >
+                              Applied
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setSelectedJobForApply(job);
+                                setApplyErrorMessage("");
+                              }}
+                              style={{
+                                flex: 1,
+                                padding: "10px 14px",
+                                borderRadius: "10px",
+                                border: "none",
+                                background: "linear-gradient(135deg, #2563eb, #0ea5e9)",
+                                color: "#ffffff",
+                                fontSize: "13px",
+                                fontWeight: 700,
+                                cursor: "pointer",
+                              }}
+                            >
+                              Apply
+                            </button>
+                          )}
                         </div>
                       </article>
-                    ))}
+                    );
+                  })}
                 </div>
               )}
             </section>
+
+            {/* Job Details Modal */}
+            {selectedJobForDetails && (
+              <div
+                style={{
+                  position: "fixed",
+                  inset: 0,
+                  background: "rgba(15, 23, 42, 0.6)",
+                  display: "grid",
+                  placeItems: "center",
+                  zIndex: 90,
+                  padding: "20px",
+                  backdropFilter: "blur(4px)",
+                }}
+              >
+                <div
+                  style={{
+                    background: "#ffffff",
+                    borderRadius: "24px",
+                    width: "100%",
+                    maxWidth: "620px",
+                    maxHeight: "90vh",
+                    overflowY: "auto",
+                    padding: "32px",
+                    boxShadow: "0 25px 60px rgba(15, 23, 42, 0.2)",
+                  }}
+                >
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "flex-start",
+                      gap: "16px",
+                      marginBottom: "16px",
+                    }}
+                  >
+                    <div>
+                      <span
+                        style={{
+                          display: "inline-block",
+                          padding: "5px 10px",
+                          borderRadius: "999px",
+                          background: "#eff6ff",
+                          color: "#1d4ed8",
+                          fontSize: "12px",
+                          fontWeight: 700,
+                          textTransform: "uppercase",
+                          marginBottom: "8px",
+                        }}
+                      >
+                        {selectedJobForDetails.jobType.replace("_", " ")}
+                      </span>
+                      <h2
+                        style={{
+                          margin: "0 0 6px",
+                          fontSize: "24px",
+                          color: "#0f172a",
+                        }}
+                      >
+                        {selectedJobForDetails.title}
+                      </h2>
+                      <p
+                        style={{
+                          margin: 0,
+                          color: "#2563eb",
+                          fontSize: "15px",
+                          fontWeight: 600,
+                        }}
+                      >
+                        {selectedJobForDetails.employer?.companyName ?? "Verified Employer"}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedJobForDetails(null)}
+                      style={{
+                        border: "none",
+                        background: "#f1f5f9",
+                        width: "36px",
+                        height: "36px",
+                        borderRadius: "50%",
+                        cursor: "pointer",
+                        fontSize: "18px",
+                        color: "#64748b",
+                        display: "grid",
+                        placeItems: "center",
+                      }}
+                    >
+                      ✕
+                    </button>
+                  </div>
+
+                  <div
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))",
+                      gap: "12px",
+                      background: "#f8fafc",
+                      padding: "16px",
+                      borderRadius: "14px",
+                      marginBottom: "20px",
+                      fontSize: "13px",
+                      color: "#334155",
+                    }}
+                  >
+                    <div>
+                      <span
+                        style={{
+                          display: "block",
+                          color: "#94a3b8",
+                          fontSize: "11px",
+                          textTransform: "uppercase",
+                          marginBottom: "3px",
+                        }}
+                      >
+                        Location
+                      </span>
+                      <strong>📍 {selectedJobForDetails.location || "Nigeria"}</strong>
+                    </div>
+                    <div>
+                      <span
+                        style={{
+                          display: "block",
+                          color: "#94a3b8",
+                          fontSize: "11px",
+                          textTransform: "uppercase",
+                          marginBottom: "3px",
+                        }}
+                      >
+                        Salary Range
+                      </span>
+                      <strong style={{ color: "#16a34a" }}>
+                        💰 {formatSalary(selectedJobForDetails.salaryMin, selectedJobForDetails.salaryMax, selectedJobForDetails.currency ?? "NGN")}
+                      </strong>
+                    </div>
+                    <div>
+                      <span
+                        style={{
+                          display: "block",
+                          color: "#94a3b8",
+                          fontSize: "11px",
+                          textTransform: "uppercase",
+                          marginBottom: "3px",
+                        }}
+                      >
+                        Deadline
+                      </span>
+                      <strong>📅 {formatDate(selectedJobForDetails.applicationDeadline)}</strong>
+                    </div>
+                  </div>
+
+                  <div style={{ marginBottom: "20px" }}>
+                    <h4
+                      style={{
+                        margin: "0 0 8px",
+                        fontSize: "16px",
+                        color: "#0f172a",
+                      }}
+                    >
+                      Job Description
+                    </h4>
+                    <p
+                      style={{
+                        margin: 0,
+                        color: "#475569",
+                        fontSize: "14px",
+                        lineHeight: "1.7",
+                        whiteSpace: "pre-line",
+                      }}
+                    >
+                      {selectedJobForDetails.description}
+                    </p>
+                  </div>
+
+                  {selectedJobForDetails.requirements && (
+                    <div style={{ marginBottom: "28px" }}>
+                      <h4
+                        style={{
+                          margin: "0 0 8px",
+                          fontSize: "16px",
+                          color: "#0f172a",
+                        }}
+                      >
+                        Requirements & Skills
+                      </h4>
+                      <p
+                        style={{
+                          margin: 0,
+                          color: "#475569",
+                          fontSize: "14px",
+                          lineHeight: "1.7",
+                          whiteSpace: "pre-line",
+                        }}
+                      >
+                        {selectedJobForDetails.requirements}
+                      </p>
+                    </div>
+                  )}
+
+                  <div
+                    style={{
+                      display: "flex",
+                      gap: "12px",
+                      justifyContent: "flex-end",
+                    }}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => setSelectedJobForDetails(null)}
+                      style={{
+                        padding: "12px 20px",
+                        borderRadius: "10px",
+                        border: "1px solid #cbd5e1",
+                        background: "#ffffff",
+                        color: "#475569",
+                        fontWeight: 600,
+                        cursor: "pointer",
+                      }}
+                    >
+                      Close
+                    </button>
+                    {appliedJobIds.has(selectedJobForDetails.id) ? (
+                      <button
+                        type="button"
+                        disabled
+                        style={{
+                          padding: "12px 24px",
+                          borderRadius: "10px",
+                          border: "none",
+                          background: "#dcfce7",
+                          color: "#166534",
+                          fontWeight: 700,
+                          cursor: "default",
+                        }}
+                      >
+                        ✓ Already Applied
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedJobForApply(selectedJobForDetails);
+                          setSelectedJobForDetails(null);
+                        }}
+                        style={{
+                          padding: "12px 28px",
+                          borderRadius: "10px",
+                          border: "none",
+                          background: "linear-gradient(135deg, #2563eb, #0ea5e9)",
+                          color: "#ffffff",
+                          fontWeight: 700,
+                          cursor: "pointer",
+                        }}
+                      >
+                        Apply for this Job
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Confirmation Modal */}
+            {selectedJobForApply && (
+              <div
+                style={{
+                  position: "fixed",
+                  inset: 0,
+                  background: "rgba(15, 23, 42, 0.6)",
+                  display: "grid",
+                  placeItems: "center",
+                  zIndex: 100,
+                  padding: "20px",
+                  backdropFilter: "blur(4px)",
+                }}
+              >
+                <div
+                  style={{
+                    background: "#ffffff",
+                    borderRadius: "20px",
+                    width: "100%",
+                    maxWidth: "480px",
+                    padding: "32px",
+                    boxShadow: "0 25px 60px rgba(15, 23, 42, 0.2)",
+                    textAlign: "center",
+                  }}
+                >
+                  <div
+                    style={{
+                      width: "56px",
+                      height: "56px",
+                      margin: "0 auto 16px",
+                      borderRadius: "50%",
+                      background: "#eff6ff",
+                      color: "#2563eb",
+                      display: "grid",
+                      placeItems: "center",
+                      fontSize: "28px",
+                    }}
+                  >
+                    💼
+                  </div>
+                  <h3
+                    style={{
+                      margin: "0 0 10px",
+                      fontSize: "22px",
+                      color: "#0f172a",
+                      fontWeight: 800,
+                    }}
+                  >
+                    Are you sure you want to apply for this job?
+                  </h3>
+                  <p
+                    style={{
+                      margin: "0 0 6px",
+                      color: "#1e293b",
+                      fontSize: "16px",
+                      fontWeight: 700,
+                    }}
+                  >
+                    {selectedJobForApply.title}
+                  </p>
+                  <p
+                    style={{
+                      margin: "0 0 24px",
+                      color: "#64748b",
+                      fontSize: "14px",
+                    }}
+                  >
+                    {selectedJobForApply.employer?.companyName} • {selectedJobForApply.location}
+                  </p>
+
+                  {applyErrorMessage && (
+                    <div
+                      style={{
+                        padding: "10px 14px",
+                        borderRadius: "10px",
+                        background: "#fef2f2",
+                        color: "#991b1b",
+                        fontSize: "13px",
+                        marginBottom: "16px",
+                      }}
+                    >
+                      {applyErrorMessage}
+                    </div>
+                  )}
+
+                  <div
+                    style={{
+                      display: "flex",
+                      gap: "12px",
+                      justifyContent: "center",
+                    }}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedJobForApply(null);
+                        setApplyErrorMessage("");
+                      }}
+                      disabled={isApplying}
+                      style={{
+                        padding: "12px 24px",
+                        borderRadius: "10px",
+                        border: "1px solid #cbd5e1",
+                        background: "#ffffff",
+                        color: "#475569",
+                        fontWeight: 600,
+                        cursor: "pointer",
+                      }}
+                    >
+                      No, Cancel
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleConfirmApply(selectedJobForApply.id)}
+                      disabled={isApplying}
+                      style={{
+                        padding: "12px 28px",
+                        borderRadius: "10px",
+                        border: "none",
+                        background: "linear-gradient(135deg, #2563eb, #0ea5e9)",
+                        color: "#ffffff",
+                        fontWeight: 700,
+                        cursor: "pointer",
+                      }}
+                    >
+                      {isApplying ? "Applying..." : "Yes, Apply"}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
           </>
         ) : user.role === "EMPLOYER" ? (
           <>

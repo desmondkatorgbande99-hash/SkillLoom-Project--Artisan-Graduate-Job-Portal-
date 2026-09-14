@@ -7,6 +7,7 @@ import RegisterPage from "./pages/RegisterPage";
 import VerifyEmailPage from "./pages/VerifyEmailPage";
 import ForgotPasswordPage from "./pages/ForgotPasswordPage";
 import ResetPasswordPage from "./pages/ResetPasswordPage";
+import AdminLoginPage from "./pages/AdminLoginPage";
 import DashboardPage from "./pages/DashboardPage";
 
 import { useAuth } from "./context/AuthContext";
@@ -19,7 +20,8 @@ type AuthView =
   | "register"
   | "verify"
   | "forgot-password"
-  | "reset-password";
+  | "reset-password"
+  | "admin-login";
 
 const featuredJobs = [
   {
@@ -225,6 +227,15 @@ function App() {
       verificationToken
     ) {
       return "reset-password";
+    }
+
+    if (
+      pathname === "/admin" ||
+      pathname === "/admin/" ||
+      pathname === "/admin-login" ||
+      pathname === "/admin-login/"
+    ) {
+      return "admin-login";
     }
 
     return "landing";
@@ -440,6 +451,17 @@ function App() {
       <ResetPasswordPage
         onBackToLogin={openLogin}
         onBackToLanding={returnToLanding}
+      />
+    );
+  }
+
+  if (authView === "admin-login") {
+    return (
+      <AdminLoginPage
+        onBack={returnToLanding}
+        onSuccess={() => {
+          setAuthView("landing");
+        }}
       />
     );
   }
