@@ -8,6 +8,7 @@ type VerifyEmailPageProps = {
 
 type VerificationState =
   | "verifying"
+  | "pending"
   | "success"
   | "error";
 
@@ -21,14 +22,11 @@ function VerifyEmailPage({
   onLogin,
 }: VerifyEmailPageProps) {
   const [state, setState] =
-    useState<VerificationState>(
-      "verifying",
-    );
+    useState<VerificationState>("verifying");
 
-  const [message, setMessage] =
-    useState(
-      "Verifying your email address...",
-    );
+  const [message, setMessage] = useState(
+    "Verifying your email address...",
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -42,25 +40,22 @@ function VerifyEmailPage({
 
       if (!token) {
         if (!cancelled) {
-          setState("error");
+          // No token in the URL means the user was just sent here after
+          // registration — show a friendly "check your inbox" waiting screen.
+          setState("pending");
           setMessage(
-            "This verification link is missing its token or is invalid.",
+            "We've sent a verification link to your email address. Please check your inbox (and spam folder) and click the link to activate your account.",
           );
         }
-
         return;
       }
 
       try {
         const response = await fetch(
-          `${API_BASE_URL}/auth/verify-email?token=${encodeURIComponent(
-            token,
-          )}`,
+          `${API_BASE_URL}/auth/verify-email?token=${encodeURIComponent(token)}`,
           {
             method: "GET",
-            headers: {
-              Accept: "application/json",
-            },
+            headers: { Accept: "application/json" },
           },
         );
 
@@ -90,12 +85,9 @@ function VerifyEmailPage({
           );
         }
       } catch (error) {
-        if (cancelled) {
-          return;
-        }
+        if (cancelled) return;
 
         setState("error");
-
         setMessage(
           error instanceof Error
             ? error.message
@@ -110,6 +102,29 @@ function VerifyEmailPage({
       cancelled = true;
     };
   }, []);
+
+  const iconBg =
+    state === "error"
+      ? "#dc2626"
+      : "linear-gradient(135deg, #2563eb, #0ea5e9)";
+
+  const iconChar =
+    state === "verifying"
+      ? "..."
+      : state === "pending"
+        ? "\u2709"
+        : state === "success"
+          ? "\u2713"
+          : "!";
+
+  const heading =
+    state === "verifying"
+      ? "Verifying your email"
+      : state === "pending"
+        ? "Check your inbox"
+        : state === "success"
+          ? "Email verified successfully"
+          : "Email verification failed";
 
   return (
     <main
@@ -130,8 +145,7 @@ function VerifyEmailPage({
           background: "#ffffff",
           borderRadius: "24px",
           padding: "40px",
-          boxShadow:
-            "0 20px 60px rgba(15, 23, 42, 0.10)",
+          boxShadow: "0 20px 60px rgba(15, 23, 42, 0.10)",
           textAlign: "center",
         }}
       >
@@ -143,20 +157,13 @@ function VerifyEmailPage({
             borderRadius: "18px",
             display: "grid",
             placeItems: "center",
-            background:
-              state === "error"
-                ? "#dc2626"
-                : "linear-gradient(135deg, #2563eb, #0ea5e9)",
+            background: iconBg,
             color: "#ffffff",
             fontSize: "28px",
             fontWeight: 800,
           }}
         >
-          {state === "verifying"
-            ? "..."
-            : state === "success"
-              ? "✓"
-              : "!"}
+          {iconChar}
         </div>
 
         <h1
@@ -167,14 +174,7 @@ function VerifyEmailPage({
             lineHeight: 1.2,
           }}
         >
-          {state === "verifying" &&
-            "Verifying your email"}
-
-          {state === "success" &&
-            "Email verified successfully"}
-
-          {state === "error" &&
-            "Email verification failed"}
+          {heading}
         </h1>
 
         {email && (
@@ -210,6 +210,34 @@ function VerifyEmailPage({
             }}
           >
             Please wait...
+          </div>
+        )}
+
+        {state === "pending" && (
+          <div
+            style={{
+              marginTop: "32px",
+              display: "flex",
+              justifyContent: "center",
+              gap: "12px",
+              flexWrap: "wrap",
+            }}
+          >
+            <button
+              type="button"
+              onClick={onBack}
+              style={{
+                border: "1px solid #cbd5e1",
+                borderRadius: "12px",
+                padding: "13px 24px",
+                background: "#ffffff",
+                color: "#0f172a",
+                fontWeight: 700,
+                cursor: "pointer",
+              }}
+            >
+              Back to SkillLoom
+            </button>
           </div>
         )}
 
