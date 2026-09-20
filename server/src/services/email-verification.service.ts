@@ -8,15 +8,19 @@ import { sendEmail } from "../utils/mail";
 const VERIFICATION_TOKEN_EXPIRY_HOURS = 24;
 
 function getVerificationUrl(token: string): string {
+  // Check multiple env var names in priority order.
+  // FRONTEND_URL / SITE_URL / CLIENT_URL must be set in the Render
+  // environment variables dashboard to the production Vercel URL:
+  //   https://skill-loom-project-artisan-graduate-eight.vercel.app
   const frontendUrl = (
     process.env.FRONTEND_URL ||
+    process.env.SITE_URL ||
     process.env.CLIENT_URL ||
-    "http://localhost:5173"
+    // Production fallback — used if none of the above are set on Render
+    "https://skill-loom-project-artisan-graduate-eight.vercel.app"
   ).replace(/\/+$/, "");
 
-  return `${frontendUrl}/verify-email?token=${encodeURIComponent(
-    token
-  )}`;
+  return `${frontendUrl}/verify-email?token=${encodeURIComponent(token)}`;
 }
 
 function escapeHtml(value: string): string {
@@ -178,9 +182,23 @@ export async function createAndSendVerificationEmail(
     </html>
   `;
 
-  return sendEmail(
-    email,
-    "Verify your SkillLoom account",
-    html
-  );
+  let emailSent = false;
+  try {
+    await sendEmail(
+      email,
+      "Verify your SkillLoom account",
+      html
+    );
+    emailSent = true;
+  } catch (emailError: any) {
+    console.warn(
+      `[Email Delivery Notice]: Could not send to ${email} (${emailError?.message || emailError}). Fallback verification URL: ${verificationUrl}`
+    );
+  }
+
+  return {
+    token: rawToken,
+    verificationUrl,
+    emailSent,
+  };
 }

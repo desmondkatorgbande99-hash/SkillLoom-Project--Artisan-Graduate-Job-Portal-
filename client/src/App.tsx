@@ -1403,8 +1403,20 @@ function App() {
                   <button
                     type="button"
                     onClick={() => {
+                      try {
+                        sessionStorage.setItem(
+                          "skillloom_pending_apply_job_title",
+                          selectedLandingJob.title
+                        );
+                      } catch {
+                        // ignore
+                      }
                       setSelectedLandingJob(null);
-                      openRegister();
+                      if (isAuthenticated && user) {
+                        setAuthView("landing");
+                      } else {
+                        openRegister();
+                      }
                     }}
                     style={{
                       padding: "12px 24px",

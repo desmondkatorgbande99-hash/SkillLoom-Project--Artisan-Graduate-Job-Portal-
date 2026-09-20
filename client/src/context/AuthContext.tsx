@@ -258,6 +258,14 @@ export function AuthProvider({
         },
       );
 
+    if (response.data?.verificationUrl) {
+      try {
+        sessionStorage.setItem("skillloom_pending_verification_url", response.data.verificationUrl);
+      } catch {
+        // ignore storage error
+      }
+    }
+
     return response.message;
   };
 

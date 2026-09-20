@@ -1,7 +1,7 @@
 import { Resend } from "resend";
 import nodemailer from "nodemailer";
 
-const EMAIL_TIMEOUT_MS = 5000;
+const EMAIL_TIMEOUT_MS = 15000; // 15s — allows for Resend cold-start latency
 
 function withTimeout<T>(promise: Promise<T>, timeoutMs: number, operationName: string): Promise<T> {
   return Promise.race([

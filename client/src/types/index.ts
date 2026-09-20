@@ -37,6 +37,8 @@ export interface RegisterResponse {
   message: string;
   data: {
     user: User;
+    verificationUrl?: string;
+    emailSent?: boolean;
   };
 }
 

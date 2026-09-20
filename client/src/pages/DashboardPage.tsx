@@ -552,34 +552,64 @@ function DashboardPage({ onLogout, onNavigateHome }: DashboardPageProps) {
 
       const titleLower = job.title.toLowerCase();
       const descLower = (job.description || "").toLowerCase();
+      const requirementsLower = (job.requirements || "").toLowerCase();
 
       const matchesCategory =
         jobCategoryFilter === "All" ||
         (jobCategoryFilter === "Technology" &&
           (titleLower.includes("developer") ||
+            titleLower.includes("engineer") ||
             titleLower.includes("data") ||
             titleLower.includes("designer") ||
-            descLower.includes("software"))) ||
+            titleLower.includes("cybersecurity") ||
+            titleLower.includes("security") ||
+            titleLower.includes("ai") ||
+            titleLower.includes("machine learning") ||
+            titleLower.includes("automation") ||
+            titleLower.includes("devops") ||
+            titleLower.includes("cloud") ||
+            titleLower.includes("database") ||
+            titleLower.includes("analyst") ||
+            titleLower.includes("marketing") ||
+            titleLower.includes("product") ||
+            titleLower.includes("ui/ux") ||
+            titleLower.includes("frontend") ||
+            titleLower.includes("backend") ||
+            descLower.includes("software") ||
+            requirementsLower.includes("react") ||
+            requirementsLower.includes("python") ||
+            requirementsLower.includes("node.js"))) ||
         (jobCategoryFilter === "Skilled Trades" &&
           (titleLower.includes("electrician") ||
             titleLower.includes("plumb") ||
             titleLower.includes("mechanic") ||
             titleLower.includes("welder") ||
-            titleLower.includes("carpenter"))) ||
+            titleLower.includes("carpenter") ||
+            titleLower.includes("tiling") ||
+            titleLower.includes("flooring") ||
+            titleLower.includes("hvac") ||
+            titleLower.includes("air conditioning") ||
+            titleLower.includes("refrigeration"))) ||
         (jobCategoryFilter === "Fashion & Design" &&
           (titleLower.includes("tailor") ||
             titleLower.includes("fashion") ||
-            titleLower.includes("designer"))) ||
+            titleLower.includes("embroidery") ||
+            titleLower.includes("accessories") ||
+            descLower.includes("fashion"))) ||
         (jobCategoryFilter === "Construction" &&
           (titleLower.includes("carpenter") ||
             titleLower.includes("construction") ||
             titleLower.includes("woodworker") ||
-            titleLower.includes("electrician"))) ||
+            titleLower.includes("electrician") ||
+            titleLower.includes("tiling") ||
+            titleLower.includes("structural"))) ||
         (jobCategoryFilter === "Business & Finance" &&
           (titleLower.includes("marketing") ||
             titleLower.includes("operations") ||
             titleLower.includes("finance") ||
-            titleLower.includes("analyst")));
+            titleLower.includes("analyst") ||
+            titleLower.includes("accounts") ||
+            titleLower.includes("digital marketing")));
 
       const searchLower = jobSearchTerm.trim().toLowerCase();
       const matchesSearch =
@@ -588,7 +618,8 @@ function DashboardPage({ onLogout, onNavigateHome }: DashboardPageProps) {
         (job.employer?.companyName &&
           job.employer.companyName.toLowerCase().includes(searchLower)) ||
         (job.location && job.location.toLowerCase().includes(searchLower)) ||
-        descLower.includes(searchLower);
+        descLower.includes(searchLower) ||
+        requirementsLower.includes(searchLower);
 
       return matchesCategory && matchesSearch;
     });
@@ -638,8 +669,27 @@ function DashboardPage({ onLogout, onNavigateHome }: DashboardPageProps) {
           return;
         }
 
-        setJobs(extractJobs(jobsResponse));
+        const loadedJobs = extractJobs(jobsResponse);
+        setJobs(loadedJobs);
         setApplications(extractApplications(applicationsResponse));
+
+        // Check if user came from clicking Apply on a landing page job
+        try {
+          const pendingTitle = sessionStorage.getItem("skillloom_pending_apply_job_title");
+          if (pendingTitle && loadedJobs.length > 0) {
+            const match = loadedJobs.find(
+              (j) =>
+                j.title.toLowerCase().includes(pendingTitle.toLowerCase()) ||
+                pendingTitle.toLowerCase().includes(j.title.toLowerCase())
+            );
+            if (match) {
+              sessionStorage.removeItem("skillloom_pending_apply_job_title");
+              setSelectedJobForApply(match);
+            }
+          }
+        } catch {
+          // ignore
+        }
       } catch (error) {
         if (!isMounted) {
           return;

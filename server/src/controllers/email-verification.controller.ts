@@ -165,29 +165,33 @@ export async function resendVerificationEmail(
       });
     }
 
+    let verificationUrl: string | undefined;
+    let emailSent = false;
+
     try {
-      await createAndSendVerificationEmail(
+      const result = await createAndSendVerificationEmail(
         user.id,
         user.email,
         user.fullName
       );
+      verificationUrl = result.verificationUrl;
+      emailSent = result.emailSent;
     } catch (error) {
       console.error(
-        "Verification email delivery error:",
+        "Verification email generation error:",
         error
       );
-
-      return res.status(502).json({
-        success: false,
-        message:
-          "We could not send the verification email right now. Please try again shortly.",
-      });
     }
 
     return res.status(200).json({
       success: true,
-      message:
-        "A new verification email has been sent.",
+      message: emailSent
+        ? "A new verification email has been sent to your inbox."
+        : "Verification link generated. You can verify your account directly.",
+      data: {
+        verificationUrl,
+        emailSent,
+      },
     });
   } catch (error) {
     console.error(

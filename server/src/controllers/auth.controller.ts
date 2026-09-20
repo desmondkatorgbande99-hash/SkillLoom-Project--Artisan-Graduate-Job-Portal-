@@ -197,21 +197,24 @@ export async function register(
       }
     );
 
-    /*
-     * Send verification email in background if required
-     * so registration is instantaneous and never hangs.
-     */
+    let verificationUrl: string | undefined;
+    let emailSent = false;
+
     if (requireVerification) {
-      createAndSendVerificationEmail(
-        user.id,
-        user.email,
-        user.fullName
-      ).catch((emailError) => {
+      try {
+        const verifyData = await createAndSendVerificationEmail(
+          user.id,
+          user.email,
+          user.fullName
+        );
+        verificationUrl = verifyData.verificationUrl;
+        emailSent = verifyData.emailSent;
+      } catch (emailError) {
         console.error(
           "Verification email failed:",
           emailError
         );
-      });
+      }
     }
 
     return res.status(201).json({
@@ -229,6 +232,8 @@ export async function register(
           isEmailVerified:
             user.isEmailVerified,
         },
+        verificationUrl,
+        emailSent,
       },
     });
   } catch (error) {
