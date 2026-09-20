@@ -26,57 +26,93 @@ type AuthView =
 const featuredJobs = [
   {
     id: 1,
-    title: "Frontend Developer",
+    title: "Frontend Developer (React / Next.js)",
     company: "Tech Solutions Ltd",
-    location: "Lagos, Nigeria",
+    location: "Lagos, Nigeria (Hybrid)",
     type: "Full-time",
     category: "Technology",
-    salary: "₦250k – ₦400k",
+    salary: "₦350k – ₦600k",
   },
   {
     id: 2,
-    title: "Graphic Designer",
-    company: "Creative Hub",
-    location: "Abuja, Nigeria",
-    type: "Contract",
-    category: "Design",
-    salary: "₦120k – ₦200k",
+    title: "Backend Developer (Node.js & Python)",
+    company: "PayWave Systems",
+    location: "Abuja, Nigeria (Remote)",
+    type: "Full-time",
+    category: "Technology",
+    salary: "₦400k – ₦750k",
   },
   {
     id: 3,
-    title: "Professional Tailor",
-    company: "StyleCraft",
-    location: "Makurdi, Nigeria",
+    title: "Cybersecurity Analyst",
+    company: "SecureNet Africa",
+    location: "Lagos, Nigeria",
     type: "Full-time",
-    category: "Fashion",
-    salary: "₦100k – ₦180k",
+    category: "Technology",
+    salary: "₦500k – ₦850k",
   },
   {
     id: 4,
-    title: "Electrician",
+    title: "AI & Automation Engineer",
+    company: "Cognitive Automations Lab",
+    location: "Lagos, Nigeria (Remote)",
+    type: "Full-time",
+    category: "Technology",
+    salary: "₦600k – ₦1.1M",
+  },
+  {
+    id: 5,
+    title: "Database Architect & Administrator",
+    company: "CloudCore Infrastructure",
+    location: "Port Harcourt, Nigeria",
+    type: "Full-time",
+    category: "Technology",
+    salary: "₦450k – ₦700k",
+  },
+  {
+    id: 6,
+    title: "Cloud & DevOps Engineer",
+    company: "DevCloud Systems",
+    location: "Abuja, Nigeria (Remote)",
+    type: "Full-time",
+    category: "Technology",
+    salary: "₦550k – ₦900k",
+  },
+  {
+    id: 7,
+    title: "Master Electrician & Solar Installer",
     company: "BuildRight Services",
     location: "Port Harcourt, Nigeria",
     type: "Contract",
     category: "Skilled Trades",
-    salary: "₦150k – ₦250k",
+    salary: "₦180k – ₦300k",
   },
   {
-    id: 5,
-    title: "Data Analyst",
-    company: "Insight Africa",
+    id: 8,
+    title: "Bespoke Fashion Tailor & Clothier",
+    company: "StyleCraft Atelier",
+    location: "Abuja, Nigeria",
+    type: "Full-time",
+    category: "Fashion",
+    salary: "₦120k – ₦220k",
+  },
+  {
+    id: 9,
+    title: "Automotive Diagnostics & Mechanic",
+    company: "AutoCraft Technical Hub",
+    location: "Benin City, Nigeria",
+    type: "Full-time",
+    category: "Skilled Trades",
+    salary: "₦150k – ₦260k",
+  },
+  {
+    id: 10,
+    title: "Data Analyst & Business Intelligence",
+    company: "Insight Analytics Africa",
     location: "Lagos, Nigeria",
     type: "Full-time",
     category: "Technology",
-    salary: "₦300k – ₦500k",
-  },
-  {
-    id: 6,
-    title: "Fashion Designer",
-    company: "Urban Styles",
-    location: "Benin City, Nigeria",
-    type: "Part-time",
-    category: "Fashion",
-    salary: "₦80k – ₦150k",
+    salary: "₦350k – ₦550k",
   },
 ];
 
@@ -248,6 +284,8 @@ function App() {
 
   const [verificationEmail, setVerificationEmail] =
     useState("");
+
+  const [selectedLandingJob, setSelectedLandingJob] = useState<typeof featuredJobs[0] | null>(null);
 
   const filteredJobs = featuredJobs.filter(
     (job) => {
@@ -578,6 +616,7 @@ function App() {
 
     return (
       <DashboardPage
+        onNavigateHome={returnToLanding}
         onLogout={() => {
           logout();
 
@@ -1167,7 +1206,7 @@ function App() {
                       <button
                         className="job-link"
                         type="button"
-                        onClick={openLogin}
+                        onClick={() => setSelectedLandingJob(job)}
                       >
                         View job →
                       </button>
@@ -1205,6 +1244,185 @@ function App() {
               </button>
             </div>
           </div>
+
+          {/* Interactive Job Details Modal for Landing Page */}
+          {selectedLandingJob && (
+            <div
+              style={{
+                position: "fixed",
+                inset: 0,
+                background: "rgba(15, 23, 42, 0.65)",
+                display: "grid",
+                placeItems: "center",
+                zIndex: 200,
+                padding: "20px",
+                backdropFilter: "blur(5px)",
+              }}
+            >
+              <div
+                style={{
+                  background: "#ffffff",
+                  borderRadius: "24px",
+                  width: "100%",
+                  maxWidth: "580px",
+                  maxHeight: "90vh",
+                  overflowY: "auto",
+                  padding: "32px",
+                  boxShadow: "0 25px 60px rgba(15, 23, 42, 0.25)",
+                }}
+              >
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "flex-start",
+                    gap: "16px",
+                    marginBottom: "16px",
+                  }}
+                >
+                  <div>
+                    <span
+                      style={{
+                        display: "inline-block",
+                        padding: "5px 12px",
+                        borderRadius: "999px",
+                        background: "#eff6ff",
+                        color: "#2563eb",
+                        fontSize: "12px",
+                        fontWeight: 700,
+                        textTransform: "uppercase",
+                        marginBottom: "10px",
+                      }}
+                    >
+                      {selectedLandingJob.category} · {selectedLandingJob.type}
+                    </span>
+                    <h2
+                      style={{
+                        margin: "0 0 6px",
+                        fontSize: "24px",
+                        color: "#0f172a",
+                        fontWeight: 800,
+                      }}
+                    >
+                      {selectedLandingJob.title}
+                    </h2>
+                    <p
+                      style={{
+                        margin: 0,
+                        color: "#2563eb",
+                        fontSize: "15px",
+                        fontWeight: 600,
+                      }}
+                    >
+                      {selectedLandingJob.company}
+                    </p>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => setSelectedLandingJob(null)}
+                    style={{
+                      border: "none",
+                      background: "#f1f5f9",
+                      borderRadius: "50%",
+                      width: "36px",
+                      height: "36px",
+                      display: "grid",
+                      placeItems: "center",
+                      color: "#475569",
+                      fontSize: "18px",
+                      cursor: "pointer",
+                    }}
+                  >
+                    ✕
+                  </button>
+                </div>
+
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "1fr 1fr",
+                    gap: "14px",
+                    padding: "16px",
+                    borderRadius: "14px",
+                    background: "#f8fafc",
+                    border: "1px solid #e2e8f0",
+                    margin: "20px 0",
+                  }}
+                >
+                  <div>
+                    <span style={{ display: "block", color: "#64748b", fontSize: "12px", marginBottom: "4px" }}>
+                      Location
+                    </span>
+                    <strong style={{ fontSize: "14px", color: "#0f172a" }}>
+                      📍 {selectedLandingJob.location}
+                    </strong>
+                  </div>
+                  <div>
+                    <span style={{ display: "block", color: "#64748b", fontSize: "12px", marginBottom: "4px" }}>
+                      Salary Range
+                    </span>
+                    <strong style={{ fontSize: "14px", color: "#16a34a" }}>
+                      💰 {selectedLandingJob.salary}
+                    </strong>
+                  </div>
+                </div>
+
+                <div style={{ marginBottom: "24px" }}>
+                  <h4 style={{ margin: "0 0 8px", fontSize: "15px", color: "#0f172a" }}>
+                    About This Opportunity
+                  </h4>
+                  <p style={{ margin: 0, color: "#475569", fontSize: "14px", lineHeight: 1.7 }}>
+                    This position is posted by a verified SkillLoom employer. Create an account or sign in as a Graduate or Artisan to submit your application and track your review, shortlisting, and hiring status directly through your dashboard.
+                  </p>
+                </div>
+
+                <div
+                  style={{
+                    display: "flex",
+                    gap: "12px",
+                    justifyContent: "flex-end",
+                    flexWrap: "wrap",
+                  }}
+                >
+                  <button
+                    type="button"
+                    onClick={() => setSelectedLandingJob(null)}
+                    style={{
+                      padding: "12px 20px",
+                      borderRadius: "10px",
+                      border: "1px solid #cbd5e1",
+                      background: "#ffffff",
+                      color: "#475569",
+                      fontWeight: 600,
+                      cursor: "pointer",
+                    }}
+                  >
+                    Close
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedLandingJob(null);
+                      openRegister();
+                    }}
+                    style={{
+                      padding: "12px 24px",
+                      borderRadius: "10px",
+                      border: "none",
+                      background: "linear-gradient(135deg, #2563eb, #0ea5e9)",
+                      color: "#ffffff",
+                      fontWeight: 700,
+                      cursor: "pointer",
+                      boxShadow: "0 8px 20px rgba(37, 99, 235, 0.25)",
+                    }}
+                  >
+                    Apply Now (Create Account / Sign In) →
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </section>
 
         <section className="section role-section">

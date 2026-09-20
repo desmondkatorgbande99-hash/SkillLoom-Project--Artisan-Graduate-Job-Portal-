@@ -45,6 +45,9 @@ export default function LoginPage({
   const [error, setError] =
     useState("");
 
+  const [loginSuccess, setLoginSuccess] =
+    useState(false);
+
   const handleSubmit = async (
     event: FormEvent,
   ) => {
@@ -67,7 +70,10 @@ export default function LoginPage({
         password,
       });
 
-      onSuccess();
+      setLoginSuccess(true);
+      setTimeout(() => {
+        onSuccess();
+      }, 900);
     } catch (err) {
       const message =
         err instanceof Error
@@ -118,6 +124,26 @@ export default function LoginPage({
             skills with opportunity.
           </p>
         </div>
+
+        {loginSuccess && (
+          <div
+            style={{
+              padding: "14px 18px",
+              borderRadius: "12px",
+              background: "#f0fdf4",
+              border: "1px solid #bbf7d0",
+              color: "#166534",
+              fontWeight: 700,
+              fontSize: "14px",
+              display: "flex",
+              alignItems: "center",
+              gap: "10px",
+              marginBottom: "18px",
+            }}
+          >
+            <span>✓</span> Login successful! Taking you to your dashboard...
+          </div>
+        )}
 
         {error && (
           <div className="auth-error">

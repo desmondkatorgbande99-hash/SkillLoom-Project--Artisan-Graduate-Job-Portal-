@@ -12,6 +12,7 @@ import type {
 
 type DashboardPageProps = {
   onLogout: () => void;
+  onNavigateHome?: () => void;
 };
 
 const roleInformation = {
@@ -390,7 +391,7 @@ function getAdminRoleStyles(role: UserRole) {
   }
 }
 
-function DashboardPage({ onLogout }: DashboardPageProps) {
+function DashboardPage({ onLogout, onNavigateHome }: DashboardPageProps) {
   const { user, profile } = useAuth();
 
   const [jobs, setJobs] = useState<Job[]>([]);
@@ -419,6 +420,88 @@ function DashboardPage({ onLogout }: DashboardPageProps) {
   const [applyErrorMessage, setApplyErrorMessage] = useState("");
   const [jobSearchTerm, setJobSearchTerm] = useState("");
   const [jobCategoryFilter, setJobCategoryFilter] = useState("All");
+  
+  // Logout flow state
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [logoutMessage, setLogoutMessage] = useState("");
+
+  // Application action state
+  const [actionInProgressId, setActionInProgressId] = useState<string | null>(null);
+  const [withdrawConfirmAppId, setWithdrawConfirmAppId] = useState<string | null>(null);
+
+  const handleLogout = () => {
+    setShowLogoutConfirm(false);
+    setIsLoggingOut(true);
+    setTimeout(() => {
+      setIsLoggingOut(false);
+      setLogoutMessage("Logged out successfully");
+      setTimeout(() => {
+        onLogout();
+      }, 700);
+    }, 900);
+  };
+
+  const handleWithdrawApplication = async (applicationId: string) => {
+    try {
+      setActionInProgressId(applicationId);
+      await apiRequest(`/applications/${applicationId}/withdraw`, {
+        method: "PATCH",
+        auth: true,
+      });
+
+      // Refresh applications
+      const updatedApplications = await apiRequest<ApplicationsResponse>(
+        "/applications/my-applications",
+        {
+          method: "GET",
+          auth: true,
+        }
+      );
+      setApplications(extractApplications(updatedApplications));
+      setWithdrawConfirmAppId(null);
+      setApplySuccessMessage("Application withdrawn successfully.");
+      setTimeout(() => setApplySuccessMessage(""), 5000);
+    } catch (err) {
+      setApplyErrorMessage(err instanceof Error ? err.message : "Failed to withdraw application.");
+      setTimeout(() => setApplyErrorMessage(""), 5000);
+    } finally {
+      setActionInProgressId(null);
+    }
+  };
+
+  const handleUpdateApplicationStatus = async (
+    applicationId: string,
+    newStatus: ApplicationStatus
+  ) => {
+    try {
+      setActionInProgressId(applicationId);
+      await apiRequest(`/applications/${applicationId}/status`, {
+        method: "PATCH",
+        auth: true,
+        body: JSON.stringify({ status: newStatus }),
+      });
+
+      // Refresh employer dashboard
+      const response = await apiRequest<EmployerDashboardResponse>(
+        "/dashboard/employer",
+        {
+          method: "GET",
+          auth: true,
+        }
+      );
+      if (response.success && response.data) {
+        setEmployerProfile(response.data.profile ?? null);
+        setEmployerStats(response.data.stats ?? null);
+        setEmployerJobs(response.data.recentJobs ?? []);
+        setEmployerApplications(response.data.recentApplications ?? []);
+      }
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Failed to update application status.");
+    } finally {
+      setActionInProgressId(null);
+    }
+  };
 
   const appliedJobIds = useMemo(() => {
     return new Set(
@@ -771,11 +854,14 @@ function DashboardPage({ onLogout }: DashboardPageProps) {
           }}
         >
           <div
+            onClick={onNavigateHome ? onNavigateHome : () => { window.location.href = "/"; }}
             style={{
               display: "flex",
               alignItems: "center",
               gap: "12px",
+              cursor: "pointer",
             }}
+            title="SkillLoom - Back to Home"
           >
             <div
               style={{
@@ -800,6 +886,7 @@ function DashboardPage({ onLogout }: DashboardPageProps) {
                 style={{
                   display: "block",
                   fontSize: "18px",
+                  color: "#0f172a",
                 }}
               >
                 SkillLoom
@@ -818,7 +905,7 @@ function DashboardPage({ onLogout }: DashboardPageProps) {
 
           <button
             type="button"
-            onClick={onLogout}
+            onClick={() => setShowLogoutConfirm(true)}
             style={{
               border: "1px solid #e2e8f0",
               background: "#ffffff",
@@ -984,6 +1071,7 @@ function DashboardPage({ onLogout }: DashboardPageProps) {
             )}
 
             <section
+              className="dashboard-responsive-grid"
               style={{
                 display: "grid",
                 gridTemplateColumns:
@@ -1139,19 +1227,41 @@ function DashboardPage({ onLogout }: DashboardPageProps) {
                             </span>
                           </div>
 
-                          <span
-                            style={{
-                              padding: "7px 11px",
-                              borderRadius: "999px",
-                              background: statusStyle.background,
-                              color: statusStyle.color,
-                              fontSize: "12px",
-                              fontWeight: 700,
-                              whiteSpace: "nowrap",
-                            }}
-                          >
-                            {getStatusLabel(application.status)}
-                          </span>
+                          <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
+                            <span
+                              style={{
+                                padding: "7px 11px",
+                                borderRadius: "999px",
+                                background: statusStyle.background,
+                                color: statusStyle.color,
+                                fontSize: "12px",
+                                fontWeight: 700,
+                                whiteSpace: "nowrap",
+                              }}
+                            >
+                              {getStatusLabel(application.status)}
+                            </span>
+
+                            {application.status !== "WITHDRAWN" && application.status !== "REJECTED" && (
+                              <button
+                                type="button"
+                                onClick={() => setWithdrawConfirmAppId(application.id)}
+                                disabled={actionInProgressId === application.id}
+                                style={{
+                                  padding: "6px 12px",
+                                  borderRadius: "8px",
+                                  border: "1px solid #fecaca",
+                                  background: "#fef2f2",
+                                  color: "#b91c1c",
+                                  fontSize: "12px",
+                                  fontWeight: 600,
+                                  cursor: "pointer",
+                                }}
+                              >
+                                {actionInProgressId === application.id ? "Withdrawing..." : "Withdraw"}
+                              </button>
+                            )}
+                          </div>
                         </div>
                       );
                     })}
@@ -2168,6 +2278,111 @@ function DashboardPage({ onLogout }: DashboardPageProps) {
                 </div>
               </div>
             )}
+
+            {/* Withdraw Application Confirmation Modal */}
+            {withdrawConfirmAppId && (
+              <div
+                style={{
+                  position: "fixed",
+                  inset: 0,
+                  background: "rgba(15, 23, 42, 0.6)",
+                  display: "grid",
+                  placeItems: "center",
+                  zIndex: 100,
+                  padding: "20px",
+                  backdropFilter: "blur(4px)",
+                }}
+              >
+                <div
+                  style={{
+                    background: "#ffffff",
+                    borderRadius: "20px",
+                    width: "100%",
+                    maxWidth: "460px",
+                    padding: "32px",
+                    boxShadow: "0 25px 60px rgba(15, 23, 42, 0.2)",
+                    textAlign: "center",
+                  }}
+                >
+                  <div
+                    style={{
+                      width: "56px",
+                      height: "56px",
+                      margin: "0 auto 16px",
+                      borderRadius: "50%",
+                      background: "#fef2f2",
+                      color: "#dc2626",
+                      display: "grid",
+                      placeItems: "center",
+                      fontSize: "26px",
+                    }}
+                  >
+                    ⚠️
+                  </div>
+                  <h3
+                    style={{
+                      margin: "0 0 10px",
+                      fontSize: "22px",
+                      color: "#0f172a",
+                      fontWeight: 800,
+                    }}
+                  >
+                    Withdraw Application?
+                  </h3>
+                  <p
+                    style={{
+                      margin: "0 0 24px",
+                      color: "#64748b",
+                      fontSize: "14px",
+                      lineHeight: 1.6,
+                    }}
+                  >
+                    Are you sure you want to withdraw this application? The employer will be notified that your application has been withdrawn.
+                  </p>
+
+                  <div
+                    style={{
+                      display: "flex",
+                      gap: "12px",
+                      justifyContent: "center",
+                    }}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => setWithdrawConfirmAppId(null)}
+                      disabled={actionInProgressId === withdrawConfirmAppId}
+                      style={{
+                        padding: "12px 24px",
+                        borderRadius: "10px",
+                        border: "1px solid #cbd5e1",
+                        background: "#ffffff",
+                        color: "#475569",
+                        fontWeight: 600,
+                        cursor: "pointer",
+                      }}
+                    >
+                      No, Keep It
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleWithdrawApplication(withdrawConfirmAppId)}
+                      disabled={actionInProgressId === withdrawConfirmAppId}
+                      style={{
+                        padding: "12px 26px",
+                        borderRadius: "10px",
+                        border: "none",
+                        background: "#dc2626",
+                        color: "#ffffff",
+                        fontWeight: 700,
+                        cursor: "pointer",
+                      }}
+                    >
+                      {actionInProgressId === withdrawConfirmAppId ? "Withdrawing..." : "Yes, Withdraw"}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
           </>
         ) : user.role === "EMPLOYER" ? (
           <>
@@ -2332,6 +2547,7 @@ function DashboardPage({ onLogout }: DashboardPageProps) {
             </section>
 
             <section
+              className="dashboard-responsive-grid"
               style={{
                 display: "grid",
                 gridTemplateColumns:
@@ -2841,13 +3057,13 @@ function DashboardPage({ onLogout }: DashboardPageProps) {
                 </div>
               ) : (
                 <div style={{ overflowX: "auto" }}>
-                  <div style={{ minWidth: "720px" }}>
+                  <div style={{ minWidth: "820px" }}>
                     <div
                       style={{
                         display: "grid",
                         gridTemplateColumns:
-                          "1.25fr 1.1fr 1fr 0.9fr",
-                        gap: "16px",
+                          "1.2fr 1fr 0.85fr 0.8fr 1.35fr",
+                        gap: "14px",
                         padding: "10px 14px",
                         color: "#94a3b8",
                         fontSize: "11px",
@@ -2860,6 +3076,7 @@ function DashboardPage({ onLogout }: DashboardPageProps) {
                       <span>Job</span>
                       <span>Applied</span>
                       <span>Status</span>
+                      <span>Manage Status</span>
                     </div>
 
                     <div
@@ -2879,8 +3096,8 @@ function DashboardPage({ onLogout }: DashboardPageProps) {
                             style={{
                               display: "grid",
                               gridTemplateColumns:
-                                "1.25fr 1.1fr 1fr 0.9fr",
-                              gap: "16px",
+                                "1.2fr 1fr 0.85fr 0.8fr 1.35fr",
+                              gap: "14px",
                               alignItems: "center",
                               padding: "15px 14px",
                               border: "1px solid #e2e8f0",
@@ -3016,6 +3233,105 @@ function DashboardPage({ onLogout }: DashboardPageProps) {
                             >
                               {getStatusLabel(application.status)}
                             </span>
+
+                            {/* Action Buttons for Employer */}
+                            <div style={{ display: "flex", gap: "6px", flexWrap: "wrap", alignItems: "center" }}>
+                              {application.status !== "REVIEWING" && application.status !== "HIRED" && application.status !== "WITHDRAWN" && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleUpdateApplicationStatus(application.id, "REVIEWING")}
+                                  disabled={actionInProgressId === application.id}
+                                  style={{
+                                    padding: "5px 10px",
+                                    borderRadius: "8px",
+                                    border: "1px solid #bfdbfe",
+                                    background: "#eff6ff",
+                                    color: "#1e40af",
+                                    fontSize: "11px",
+                                    fontWeight: 700,
+                                    cursor: "pointer",
+                                  }}
+                                  title="Mark as Reviewing"
+                                >
+                                  Review
+                                </button>
+                              )}
+
+                              {application.status !== "SHORTLISTED" && application.status !== "HIRED" && application.status !== "WITHDRAWN" && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleUpdateApplicationStatus(application.id, "SHORTLISTED")}
+                                  disabled={actionInProgressId === application.id}
+                                  style={{
+                                    padding: "5px 10px",
+                                    borderRadius: "8px",
+                                    border: "1px solid #fde68a",
+                                    background: "#fef3c7",
+                                    color: "#92400e",
+                                    fontSize: "11px",
+                                    fontWeight: 700,
+                                    cursor: "pointer",
+                                  }}
+                                  title="Shortlist applicant"
+                                >
+                                  Shortlist
+                                </button>
+                              )}
+
+                              {application.status !== "HIRED" && application.status !== "WITHDRAWN" && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleUpdateApplicationStatus(application.id, "HIRED")}
+                                  disabled={actionInProgressId === application.id}
+                                  style={{
+                                    padding: "5px 10px",
+                                    borderRadius: "8px",
+                                    border: "1px solid #bbf7d0",
+                                    background: "#f0fdf4",
+                                    color: "#166534",
+                                    fontSize: "11px",
+                                    fontWeight: 700,
+                                    cursor: "pointer",
+                                  }}
+                                  title="Hire applicant"
+                                >
+                                  Hire
+                                </button>
+                              )}
+
+                              {application.status !== "REJECTED" && application.status !== "HIRED" && application.status !== "WITHDRAWN" && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleUpdateApplicationStatus(application.id, "REJECTED")}
+                                  disabled={actionInProgressId === application.id}
+                                  style={{
+                                    padding: "5px 10px",
+                                    borderRadius: "8px",
+                                    border: "1px solid #fecaca",
+                                    background: "#fef2f2",
+                                    color: "#991b1b",
+                                    fontSize: "11px",
+                                    fontWeight: 700,
+                                    cursor: "pointer",
+                                  }}
+                                  title="Reject application"
+                                >
+                                  Reject
+                                </button>
+                              )}
+
+                              {application.status === "WITHDRAWN" && (
+                                <span style={{ color: "#94a3b8", fontSize: "11px", fontStyle: "italic" }}>
+                                  Withdrawn by applicant
+                                </span>
+                              )}
+
+                              {application.status === "HIRED" && (
+                                <span style={{ color: "#16a34a", fontSize: "11px", fontWeight: 700 }}>
+                                  ✓ Hired
+                                </span>
+                              )}
+                            </div>
                           </div>
                         );
                       })}
@@ -3967,6 +4283,201 @@ function DashboardPage({ onLogout }: DashboardPageProps) {
           </section>
         )}
       </main>
+      {/* Logout Confirmation Modal */}
+      {showLogoutConfirm && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(15, 23, 42, 0.6)",
+            display: "grid",
+            placeItems: "center",
+            zIndex: 110,
+            padding: "20px",
+            backdropFilter: "blur(4px)",
+          }}
+        >
+          <div
+            style={{
+              background: "#ffffff",
+              borderRadius: "20px",
+              width: "100%",
+              maxWidth: "440px",
+              padding: "32px",
+              boxShadow: "0 25px 60px rgba(15, 23, 42, 0.2)",
+              textAlign: "center",
+            }}
+          >
+            <div
+              style={{
+                width: "56px",
+                height: "56px",
+                margin: "0 auto 16px",
+                borderRadius: "50%",
+                background: "#fef2f2",
+                color: "#dc2626",
+                display: "grid",
+                placeItems: "center",
+                fontSize: "26px",
+              }}
+            >
+              👋
+            </div>
+            <h3
+              style={{
+                margin: "0 0 10px",
+                fontSize: "22px",
+                color: "#0f172a",
+                fontWeight: 800,
+              }}
+            >
+              Are you sure you want to log out?
+            </h3>
+            <p
+              style={{
+                margin: "0 0 24px",
+                color: "#64748b",
+                fontSize: "14px",
+                lineHeight: 1.6,
+              }}
+            >
+              You will need to sign back in with your credentials to access your dashboard and applications.
+            </p>
+
+            <div
+              style={{
+                display: "flex",
+                gap: "12px",
+                justifyContent: "center",
+              }}
+            >
+              <button
+                type="button"
+                onClick={() => setShowLogoutConfirm(false)}
+                style={{
+                  padding: "12px 24px",
+                  borderRadius: "10px",
+                  border: "1px solid #cbd5e1",
+                  background: "#ffffff",
+                  color: "#475569",
+                  fontWeight: 600,
+                  cursor: "pointer",
+                }}
+              >
+                No, Stay Logged In
+              </button>
+              <button
+                type="button"
+                onClick={handleLogout}
+                style={{
+                  padding: "12px 26px",
+                  borderRadius: "10px",
+                  border: "none",
+                  background: "#dc2626",
+                  color: "#ffffff",
+                  fontWeight: 700,
+                  cursor: "pointer",
+                }}
+              >
+                Yes, Log Out
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Logging Out Spinner / Progress UI */}
+      {isLoggingOut && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(15, 23, 42, 0.75)",
+            display: "grid",
+            placeItems: "center",
+            zIndex: 120,
+            padding: "20px",
+            backdropFilter: "blur(4px)",
+          }}
+        >
+          <div
+            style={{
+              background: "#ffffff",
+              borderRadius: "20px",
+              padding: "32px 48px",
+              textAlign: "center",
+              boxShadow: "0 25px 60px rgba(15, 23, 42, 0.25)",
+            }}
+          >
+            <div
+              style={{
+                width: "48px",
+                height: "48px",
+                border: "4px solid #e2e8f0",
+                borderTop: "4px solid #2563eb",
+                borderRadius: "50%",
+                margin: "0 auto 18px",
+                animation: "spin 1s linear infinite",
+              }}
+            />
+            <h4 style={{ margin: "0 0 6px", fontSize: "18px", color: "#0f172a" }}>
+              Logging out...
+            </h4>
+            <p style={{ margin: 0, color: "#64748b", fontSize: "13px" }}>
+              Safely ending your session...
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Logged Out Successfully Message */}
+      {logoutMessage && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(15, 23, 42, 0.75)",
+            display: "grid",
+            placeItems: "center",
+            zIndex: 130,
+            padding: "20px",
+            backdropFilter: "blur(4px)",
+          }}
+        >
+          <div
+            style={{
+              background: "#ffffff",
+              borderRadius: "20px",
+              padding: "32px 48px",
+              textAlign: "center",
+              boxShadow: "0 25px 60px rgba(15, 23, 42, 0.25)",
+            }}
+          >
+            <div
+              style={{
+                width: "52px",
+                height: "52px",
+                margin: "0 auto 16px",
+                borderRadius: "50%",
+                background: "#f0fdf4",
+                color: "#16a34a",
+                display: "grid",
+                placeItems: "center",
+                fontSize: "26px",
+                fontWeight: 800,
+              }}
+            >
+              ✓
+            </div>
+            <h3 style={{ margin: "0 0 6px", fontSize: "20px", color: "#166534" }}>
+              {logoutMessage}
+            </h3>
+            <p style={{ margin: 0, color: "#64748b", fontSize: "14px" }}>
+              Redirecting you to the home page...
+            </p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

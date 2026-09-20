@@ -1966,3 +1966,10 @@ button {
     align-items: center;
   }
 }
+
+/* DASHBOARD MOBILE RESPONSIVE LAYOUT */
+@media (max-width: 900px) {
+  .dashboard-responsive-grid {
+    grid-template-columns: 1fr !important;
+  }
+}

@@ -221,46 +221,27 @@ export function AuthProvider({
     setToken(authenticatedToken);
     setUser(authenticatedUser);
 
-    /**
-     * Try to load the complete profile.
-     *
-     * The login response already contains the
-     * authenticated user, so failure to load the
-     * profile must NOT destroy the login session.
-     */
-    try {
-      const profileResponse =
-        await apiRequest<ProfileResponse>(
-          "/profiles/me",
-          {
-            method: "GET",
-            auth: true,
-          },
-        );
-
-      if (
-        profileResponse.success &&
-        profileResponse.data?.profile
-      ) {
-        const currentProfile =
-          profileResponse.data.profile;
-
-        setProfile(currentProfile);
-        setUser(currentProfile);
-      }
-    } catch (error) {
-      /**
-       * Keep the authenticated user from the
-       * successful login response.
-       */
-      console.error(
-        "Unable to load profile after login:",
-        error,
-      );
-
-      setToken(authenticatedToken);
-      setUser(authenticatedUser);
+    if (response.data.profile) {
+      setProfile(response.data.profile);
+      setUser(response.data.profile);
     }
+
+    /**
+     * Refresh the complete profile in the background without blocking login.
+     */
+    apiRequest<ProfileResponse>("/profiles/me", {
+      method: "GET",
+      auth: true,
+    })
+      .then((profileResponse) => {
+        if (profileResponse.success && profileResponse.data?.profile) {
+          setProfile(profileResponse.data.profile);
+          setUser(profileResponse.data.profile);
+        }
+      })
+      .catch((error) => {
+        console.error("Unable to load profile after login:", error);
+      });
 
     return authenticatedUser;
   };

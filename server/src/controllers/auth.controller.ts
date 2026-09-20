@@ -339,6 +339,25 @@ export async function login(
       },
     });
 
+    const userWithProfile = await prisma.user.findUnique({
+      where: { id: user.id },
+      select: {
+        id: true,
+        fullName: true,
+        email: true,
+        role: true,
+        status: true,
+        isEmailVerified: true,
+        avatarUrl: true,
+        lastLoginAt: true,
+        createdAt: true,
+        updatedAt: true,
+        graduateProfile: true,
+        artisanProfile: true,
+        employerProfile: true,
+      },
+    });
+
     return res.status(200).json({
       success: true,
       message: "Login successful.",
@@ -352,7 +371,11 @@ export async function login(
           isEmailVerified:
             user.isEmailVerified,
           lastLoginAt,
+          graduateProfile: userWithProfile?.graduateProfile,
+          artisanProfile: userWithProfile?.artisanProfile,
+          employerProfile: userWithProfile?.employerProfile,
         },
+        profile: userWithProfile,
         token,
       },
     });

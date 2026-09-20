@@ -121,7 +121,7 @@ function VerifyEmailPage({
     state === "verifying"
       ? "Verifying your email"
       : state === "pending"
-        ? "Check your inbox"
+        ? "Account created successfully"
         : state === "success"
           ? "Email verified successfully"
           : "Email verification failed";
@@ -225,14 +225,33 @@ function VerifyEmailPage({
           >
             <button
               type="button"
+              onClick={onLogin}
+              style={{
+                border: "none",
+                borderRadius: "12px",
+                padding: "13px 28px",
+                background:
+                  "linear-gradient(135deg, #2563eb, #0ea5e9)",
+                color: "#ffffff",
+                fontWeight: 700,
+                fontSize: "15px",
+                cursor: "pointer",
+                boxShadow: "0 8px 20px rgba(37, 99, 235, 0.25)",
+              }}
+            >
+              Account created successfully, go to login →
+            </button>
+
+            <button
+              type="button"
               onClick={onBack}
               style={{
                 border: "1px solid #cbd5e1",
                 borderRadius: "12px",
-                padding: "13px 24px",
+                padding: "13px 20px",
                 background: "#ffffff",
                 color: "#0f172a",
-                fontWeight: 700,
+                fontWeight: 600,
                 cursor: "pointer",
               }}
             >

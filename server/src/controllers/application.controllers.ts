@@ -649,11 +649,11 @@ export async function updateApplicationStatus(
       });
     }
 
-    if (req.user.role !== "EMPLOYER") {
+    if (req.user.role !== "EMPLOYER" && req.user.role !== "ADMIN") {
       return res.status(403).json({
         success: false,
         message:
-          "Only employers can update application status.",
+          "Only employers and administrators can update application status.",
       });
     }
 
@@ -676,23 +676,6 @@ export async function updateApplicationStatus(
         success: false,
         message:
           "Invalid application status. Choose PENDING, REVIEWING, SHORTLISTED, REJECTED, HIRED or WITHDRAWN.",
-      });
-    }
-
-    const employer =
-      await prisma.employerProfile.findUnique({
-        where: {
-          userId: req.user.userId,
-        },
-        select: {
-          id: true,
-        },
-      });
-
-    if (!employer) {
-      return res.status(404).json({
-        success: false,
-        message: "Employer profile not found.",
       });
     }
 
@@ -719,15 +702,24 @@ export async function updateApplicationStatus(
       });
     }
 
-    if (
-      application.job.employerId !==
-      employer.id
-    ) {
-      return res.status(403).json({
-        success: false,
-        message:
-          "You are not authorized to update this application.",
-      });
+    if (req.user.role === "EMPLOYER") {
+      const employer =
+        await prisma.employerProfile.findUnique({
+          where: {
+            userId: req.user.userId,
+          },
+          select: {
+            id: true,
+          },
+        });
+
+      if (!employer || application.job.employerId !== employer.id) {
+        return res.status(403).json({
+          success: false,
+          message:
+            "You are not authorized to update this application.",
+        });
+      }
     }
 
     const updatedApplication =

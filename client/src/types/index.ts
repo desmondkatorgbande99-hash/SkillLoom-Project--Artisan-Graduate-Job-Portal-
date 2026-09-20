@@ -27,6 +27,7 @@ export interface LoginResponse {
   message: string;
   data: {
     user: User;
+    profile?: Profile | null;
     token: string;
   };
 }
@@ -78,6 +79,8 @@ export interface Profile extends User {
   artisanProfile?: ArtisanProfile | null;
   employerProfile?: EmployerProfile | null;
 }
+
+export type UserProfile = Profile;
 
 export interface GraduateProfile {
   id: string;
