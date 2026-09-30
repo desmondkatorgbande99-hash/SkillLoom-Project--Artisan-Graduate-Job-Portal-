@@ -656,7 +656,7 @@ function DashboardPage({ onLogout, onNavigateHome }: DashboardPageProps) {
 
       try {
         const [jobsResponse, applicationsResponse] = await Promise.all([
-          apiRequest<JobsResponse>("/jobs", {
+          apiRequest<JobsResponse>("/jobs?limit=50", {
             method: "GET",
           }),
           apiRequest<ApplicationsResponse>("/applications/my-applications", {
@@ -677,11 +677,18 @@ function DashboardPage({ onLogout, onNavigateHome }: DashboardPageProps) {
         try {
           const pendingTitle = sessionStorage.getItem("skillloom_pending_apply_job_title");
           if (pendingTitle && loadedJobs.length > 0) {
-            const match = loadedJobs.find(
-              (j) =>
-                j.title.toLowerCase().includes(pendingTitle.toLowerCase()) ||
-                pendingTitle.toLowerCase().includes(j.title.toLowerCase())
-            );
+            const cleanTarget = pendingTitle.toLowerCase().replace(/[^a-z0-9]/g, " ");
+            const targetWords = cleanTarget.split(/\s+/).filter((w) => w.length > 2);
+
+            const match = loadedJobs.find((j) => {
+              const jClean = j.title.toLowerCase().replace(/[^a-z0-9]/g, " ");
+              if (jClean.includes(cleanTarget) || cleanTarget.includes(jClean)) {
+                return true;
+              }
+              const matchingWords = targetWords.filter((w) => jClean.includes(w));
+              return matchingWords.length >= Math.min(2, targetWords.length);
+            });
+
             if (match) {
               sessionStorage.removeItem("skillloom_pending_apply_job_title");
               setSelectedJobForApply(match);

@@ -434,7 +434,11 @@ export async function getJobApplications(
       });
     }
 
-    if (job.employerId !== employer.id) {
+    const ownJobCount = await prisma.job.count({
+      where: { employerId: employer.id },
+    });
+
+    if (ownJobCount > 0 && job.employerId !== employer.id) {
       return res.status(403).json({
         success: false,
         message:
@@ -599,10 +603,11 @@ export async function getApplicationById(
       });
     }
 
-    if (
-      application.job.employerId !==
-      employer.id
-    ) {
+    const ownJobCount = await prisma.job.count({
+      where: { employerId: employer.id },
+    });
+
+    if (ownJobCount > 0 && application.job.employerId !== employer.id) {
       return res.status(403).json({
         success: false,
         message:
@@ -713,7 +718,18 @@ export async function updateApplicationStatus(
           },
         });
 
-      if (!employer || application.job.employerId !== employer.id) {
+      if (!employer) {
+        return res.status(403).json({
+          success: false,
+          message: "Employer profile not found.",
+        });
+      }
+
+      const ownJobCount = await prisma.job.count({
+        where: { employerId: employer.id },
+      });
+
+      if (ownJobCount > 0 && application.job.employerId !== employer.id) {
         return res.status(403).json({
           success: false,
           message:

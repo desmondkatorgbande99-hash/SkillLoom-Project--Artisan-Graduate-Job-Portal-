@@ -26,7 +26,7 @@ type AuthView =
 const featuredJobs = [
   {
     id: 1,
-    title: "Frontend Developer (React / Next.js)",
+    title: "Frontend Developer (React & TypeScript)",
     company: "Tech Solutions Ltd",
     location: "Lagos, Nigeria (Hybrid)",
     type: "Full-time",
@@ -35,7 +35,7 @@ const featuredJobs = [
   },
   {
     id: 2,
-    title: "Backend Developer (Node.js & Python)",
+    title: "Backend Engineer (Node.js & Python)",
     company: "PayWave Systems",
     location: "Abuja, Nigeria (Remote)",
     type: "Full-time",
@@ -44,7 +44,7 @@ const featuredJobs = [
   },
   {
     id: 3,
-    title: "Cybersecurity Analyst",
+    title: "Cybersecurity Analyst & Penetration Tester",
     company: "SecureNet Africa",
     location: "Lagos, Nigeria",
     type: "Full-time",
@@ -53,8 +53,8 @@ const featuredJobs = [
   },
   {
     id: 4,
-    title: "AI & Automation Engineer",
-    company: "Cognitive Automations Lab",
+    title: "AI & Machine Learning Automation Engineer",
+    company: "CogniFlow Labs",
     location: "Lagos, Nigeria (Remote)",
     type: "Full-time",
     category: "Technology",
@@ -62,7 +62,7 @@ const featuredJobs = [
   },
   {
     id: 5,
-    title: "Database Architect & Administrator",
+    title: "Database Administrator & Cloud Data Architect",
     company: "CloudCore Infrastructure",
     location: "Port Harcourt, Nigeria",
     type: "Full-time",
@@ -71,7 +71,7 @@ const featuredJobs = [
   },
   {
     id: 6,
-    title: "Cloud & DevOps Engineer",
+    title: "Cloud Infrastructure & DevOps Engineer",
     company: "DevCloud Systems",
     location: "Abuja, Nigeria (Remote)",
     type: "Full-time",
@@ -80,39 +80,66 @@ const featuredJobs = [
   },
   {
     id: 7,
-    title: "Master Electrician & Solar Installer",
+    title: "Master Electrician & Solar Installation Technician",
     company: "BuildRight Services",
     location: "Port Harcourt, Nigeria",
     type: "Contract",
     category: "Skilled Trades",
-    salary: "₦180k – ₦300k",
+    salary: "₦180k – ₦320k",
   },
   {
     id: 8,
-    title: "Bespoke Fashion Tailor & Clothier",
+    title: "Bespoke Fashion Tailor & Pattern Cutter",
     company: "StyleCraft Atelier",
     location: "Abuja, Nigeria",
     type: "Full-time",
-    category: "Fashion",
+    category: "Fashion & Design",
     salary: "₦120k – ₦220k",
   },
   {
     id: 9,
-    title: "Automotive Diagnostics & Mechanic",
+    title: "Automotive Diagnostics Technician & Mechanic",
     company: "AutoCraft Technical Hub",
     location: "Benin City, Nigeria",
     type: "Full-time",
     category: "Skilled Trades",
-    salary: "₦150k – ₦260k",
+    salary: "₦150k – ₦280k",
   },
   {
     id: 10,
-    title: "Data Analyst & Business Intelligence",
+    title: "Data Analyst & Business Intelligence Specialist",
     company: "Insight Analytics Africa",
     location: "Lagos, Nigeria",
     type: "Full-time",
     category: "Technology",
     salary: "₦350k – ₦550k",
+  },
+  {
+    id: 11,
+    title: "Plumbing & Water Systems Installation Specialist",
+    company: "PlumbPro Nigeria",
+    location: "Lagos, Nigeria",
+    type: "Contract",
+    category: "Skilled Trades",
+    salary: "₦150k – ₦260k",
+  },
+  {
+    id: 12,
+    title: "Structural Welder & Metal Fabricator",
+    company: "TechWeld Engineering",
+    location: "Aba, Nigeria",
+    type: "Contract",
+    category: "Skilled Trades",
+    salary: "₦160k – ₦290k",
+  },
+  {
+    id: 13,
+    title: "Furniture Carpenter & Architectural Woodworker",
+    company: "WoodCraft Designs",
+    location: "Lagos, Nigeria",
+    type: "Full-time",
+    category: "Skilled Trades",
+    salary: "₦130k – ₦250k",
   },
 ];
 
@@ -291,7 +318,10 @@ function App() {
     (job) => {
       const categoryMatch =
         activeCategory === "All" ||
-        job.category === activeCategory;
+        job.category === activeCategory ||
+        (activeCategory === "Fashion" && job.category.includes("Fashion")) ||
+        (activeCategory === "Design" && job.category.includes("Design")) ||
+        (activeCategory === "Skilled Trades" && (job.category.includes("Trade") || job.category.includes("Skilled")));
 
       const searchMatch =
         searchTerm.trim() === "" ||

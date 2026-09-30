@@ -258,14 +258,14 @@ export async function getJobs(
       location,
       jobType,
       page = "1",
-      limit = "10",
+      limit = "50",
     } = req.query;
 
     const parsedPage = Math.max(Number(page) || 1, 1);
 
     const parsedLimit = Math.min(
-      Math.max(Number(limit) || 10, 1),
-      50
+      Math.max(Number(limit) || 50, 1),
+      100
     );
 
     const skip = (parsedPage - 1) * parsedLimit;

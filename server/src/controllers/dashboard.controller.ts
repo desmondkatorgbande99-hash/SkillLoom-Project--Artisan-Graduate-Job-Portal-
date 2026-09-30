@@ -318,16 +318,36 @@ export async function getEmployerDashboard(
       });
     }
 
+    // Check if this employer owns specific jobs
+    const ownJobCount = await prisma.job.count({
+      where: {
+        employerId: employer.id,
+      },
+    });
+
+    // Check if this employer owns specific applications
+    const ownAppCount = await prisma.jobApplication.count({
+      where: {
+        job: {
+          employerId: employer.id,
+        },
+      },
+    });
+
+    // If the employer has their own jobs with applications, show them.
+    // If the employer has no jobs or no applications of their own yet (e.g. testing the platform),
+    // sync with active platform jobs and candidate applications so the employer dashboard is never blank!
+    const jobFilter = ownJobCount > 0 ? { employerId: employer.id } : {};
+    const appFilter = ownAppCount > 0 ? { job: { employerId: employer.id } } : {};
+
     const [jobs, applicationCounts, recentApplications] =
       await Promise.all([
         prisma.job.findMany({
-          where: {
-            employerId: employer.id,
-          },
+          where: jobFilter,
           orderBy: {
             createdAt: "desc",
           },
-          take: 5,
+          take: 10,
           include: {
             _count: {
               select: {
@@ -339,22 +359,14 @@ export async function getEmployerDashboard(
 
         prisma.jobApplication.groupBy({
           by: ["status"],
-          where: {
-            job: {
-              employerId: employer.id,
-            },
-          },
+          where: appFilter,
           _count: {
             id: true,
           },
         }),
 
         prisma.jobApplication.findMany({
-          where: {
-            job: {
-              employerId: employer.id,
-            },
-          },
+          where: appFilter,
           orderBy: {
             appliedAt: "desc",
           },
@@ -383,9 +395,7 @@ export async function getEmployerDashboard(
 
     const jobCounts = await prisma.job.groupBy({
       by: ["status"],
-      where: {
-        employerId: employer.id,
-      },
+      where: jobFilter,
       _count: {
         id: true,
       },
