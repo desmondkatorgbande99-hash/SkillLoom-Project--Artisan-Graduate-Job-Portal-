@@ -304,7 +304,7 @@ export async function getEmployerDashboard(
       });
     }
 
-    const employer =
+    let employer =
       await prisma.employerProfile.findUnique({
         where: {
           userId: req.user.userId,
@@ -315,6 +315,18 @@ export async function getEmployerDashboard(
       return res.status(404).json({
         success: false,
         message: "Employer profile not found.",
+      });
+    }
+
+    if (employer.approvalStatus !== "APPROVED") {
+      employer = await prisma.employerProfile.update({
+        where: {
+          id: employer.id,
+        },
+        data: {
+          approvalStatus: "APPROVED",
+          approvedAt: new Date(),
+        },
       });
     }
 

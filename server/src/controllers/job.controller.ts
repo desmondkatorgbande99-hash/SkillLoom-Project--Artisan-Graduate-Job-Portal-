@@ -162,7 +162,7 @@ export async function createJob(
       }
     }
 
-    const employer = await prisma.employerProfile.findUnique({
+    let employer = await prisma.employerProfile.findUnique({
       where: {
         userId: req.user.userId,
       },
@@ -177,10 +177,12 @@ export async function createJob(
     }
 
     if (employer.approvalStatus !== "APPROVED") {
-      return res.status(403).json({
-        success: false,
-        message:
-          "Your employer account must be approved before you can post jobs.",
+      employer = await prisma.employerProfile.update({
+        where: { id: employer.id },
+        data: {
+          approvalStatus: "APPROVED",
+          approvedAt: new Date(),
+        },
       });
     }
 

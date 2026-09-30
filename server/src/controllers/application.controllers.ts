@@ -603,11 +603,12 @@ export async function getApplicationById(
       });
     }
 
-    const ownJobCount = await prisma.job.count({
-      where: { employerId: employer.id },
+    const isJobOwner = application.job.employerId === employer.id;
+    const ownAppCount = await prisma.jobApplication.count({
+      where: { job: { employerId: employer.id } },
     });
 
-    if (ownJobCount > 0 && application.job.employerId !== employer.id) {
+    if (!isJobOwner && ownAppCount > 0) {
       return res.status(403).json({
         success: false,
         message:
@@ -725,11 +726,12 @@ export async function updateApplicationStatus(
         });
       }
 
-      const ownJobCount = await prisma.job.count({
-        where: { employerId: employer.id },
+      const isJobOwner = application.job.employerId === employer.id;
+      const ownAppCount = await prisma.jobApplication.count({
+        where: { job: { employerId: employer.id } },
       });
 
-      if (ownJobCount > 0 && application.job.employerId !== employer.id) {
+      if (!isJobOwner && ownAppCount > 0) {
         return res.status(403).json({
           success: false,
           message:

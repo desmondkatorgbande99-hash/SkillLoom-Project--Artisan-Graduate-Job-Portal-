@@ -170,8 +170,9 @@ export async function register(
           await tx.employerProfile.create({
             data: {
               userId: createdUser.id,
-              companyName:
-                companyName.trim(),
+              companyName: companyName.trim(),
+              approvalStatus: "APPROVED",
+              approvedAt: new Date(),
             },
           });
         }

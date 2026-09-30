@@ -340,6 +340,17 @@ const JOBS: JobSeed[] = [
 
 export async function ensureSeededJobs(): Promise<void> {
   try {
+    // Unconditionally auto-approve any pending employer accounts on startup
+    await prisma.employerProfile.updateMany({
+      where: {
+        approvalStatus: "PENDING",
+      },
+      data: {
+        approvalStatus: "APPROVED",
+        approvedAt: new Date(),
+      },
+    });
+
     const existingCount = await prisma.job.count({
       where: {
         title: "Frontend Developer (React & TypeScript)",
