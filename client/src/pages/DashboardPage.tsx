@@ -459,7 +459,19 @@ function DashboardPage({ onLogout, onNavigateHome }: DashboardPageProps) {
         auth: true,
       });
 
-      // Refresh applications
+      // Persist WITHDRAWN to localStorage so employer dashboard syncs
+      localStorage.setItem(`skillloom_app_status_${applicationId}`, "WITHDRAWN");
+      try {
+        window.dispatchEvent(new Event("storage"));
+        window.dispatchEvent(
+          new CustomEvent("skillloom:status_change", {
+            detail: { applicationId, newStatus: "WITHDRAWN" },
+          })
+        );
+      } catch {}
+
+      // Refresh applications from server, then re-apply ALL localStorage overrides
+      // so existing HIRED/SHORTLISTED statuses are not lost
       const updatedApplications = await apiRequest<ApplicationsResponse>(
         "/applications/my-applications",
         {
@@ -467,7 +479,12 @@ function DashboardPage({ onLogout, onNavigateHome }: DashboardPageProps) {
           auth: true,
         }
       );
-      setApplications(extractApplications(updatedApplications));
+      const freshApps = extractApplications(updatedApplications);
+      const mergedApps = freshApps.map((app) => {
+        const savedStatus = localStorage.getItem(`skillloom_app_status_${app.id}`);
+        return savedStatus ? { ...app, status: savedStatus as ApplicationStatus } : app;
+      });
+      setApplications(mergedApps);
       setWithdrawConfirmAppId(null);
       setApplySuccessMessage("Application withdrawn successfully.");
       setTimeout(() => setApplySuccessMessage(""), 5000);
@@ -549,10 +566,18 @@ function DashboardPage({ onLogout, onNavigateHome }: DashboardPageProps) {
     return applications.filter((app) => app.status === "HIRED");
   }, [applications]);
 
-  // Synchronize applications status across tabs and components
+  // Synchronize applications status across Graduate/Artisan AND Employer dashboards
   useEffect(() => {
     const handleStatusSync = () => {
+      // Update Graduate/Artisan applications
       setApplications((prev) =>
+        prev.map((app) => {
+          const savedStatus = localStorage.getItem(`skillloom_app_status_${app.id}`);
+          return savedStatus ? { ...app, status: savedStatus as ApplicationStatus } : app;
+        })
+      );
+      // Update Employer applications so Withdraw/Hire changes show immediately
+      setEmployerApplications((prev) =>
         prev.map((app) => {
           const savedStatus = localStorage.getItem(`skillloom_app_status_${app.id}`);
           return savedStatus ? { ...app, status: savedStatus as ApplicationStatus } : app;
@@ -618,7 +643,14 @@ function DashboardPage({ onLogout, onNavigateHome }: DashboardPageProps) {
           auth: true,
         }
       );
-      setApplications(extractApplications(updatedApplications));
+      // Re-apply ALL localStorage status overrides so previously HIRED/SHORTLISTED
+      // applications don't revert to PENDING when the server sends stale data
+      const freshApps = extractApplications(updatedApplications);
+      const mergedApps = freshApps.map((app) => {
+        const savedStatus = localStorage.getItem(`skillloom_app_status_${app.id}`);
+        return savedStatus ? { ...app, status: savedStatus as ApplicationStatus } : app;
+      });
+      setApplications(mergedApps);
 
       setSelectedJobForApply(null);
       setApplySuccessMessage(
