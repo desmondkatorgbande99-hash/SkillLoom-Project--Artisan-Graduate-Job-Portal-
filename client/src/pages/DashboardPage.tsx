@@ -444,6 +444,14 @@ function DashboardPage({ onLogout, onNavigateHome }: DashboardPageProps) {
   };
 
   const handleWithdrawApplication = async (applicationId: string) => {
+    const targetApp = applications.find((a) => a.id === applicationId);
+    if (targetApp && targetApp.status === "HIRED") {
+      setApplyErrorMessage("A hired application cannot be withdrawn.");
+      setWithdrawConfirmAppId(null);
+      setTimeout(() => setApplyErrorMessage(""), 5000);
+      return;
+    }
+
     try {
       setActionInProgressId(applicationId);
       await apiRequest(`/applications/${applicationId}/withdraw`, {
@@ -478,6 +486,14 @@ function DashboardPage({ onLogout, onNavigateHome }: DashboardPageProps) {
     try {
       setActionInProgressId(applicationId);
       localStorage.setItem(`skillloom_app_status_${applicationId}`, newStatus);
+      try {
+        window.dispatchEvent(new Event("storage"));
+        window.dispatchEvent(
+          new CustomEvent("skillloom:status_change", {
+            detail: { applicationId, newStatus },
+          })
+        );
+      } catch {}
 
       // Optimistically update employerApplications in state
       setEmployerApplications((prev) =>
@@ -529,6 +545,29 @@ function DashboardPage({ onLogout, onNavigateHome }: DashboardPageProps) {
     );
   }, [applications]);
 
+  const hiredApplications = useMemo(() => {
+    return applications.filter((app) => app.status === "HIRED");
+  }, [applications]);
+
+  // Synchronize applications status across tabs and components
+  useEffect(() => {
+    const handleStatusSync = () => {
+      setApplications((prev) =>
+        prev.map((app) => {
+          const savedStatus = localStorage.getItem(`skillloom_app_status_${app.id}`);
+          return savedStatus ? { ...app, status: savedStatus as ApplicationStatus } : app;
+        })
+      );
+    };
+
+    window.addEventListener("storage", handleStatusSync);
+    window.addEventListener("skillloom:status_change", handleStatusSync);
+    return () => {
+      window.removeEventListener("storage", handleStatusSync);
+      window.removeEventListener("skillloom:status_change", handleStatusSync);
+    };
+  }, []);
+
   const handleConfirmApply = async (jobId: string) => {
     try {
       setIsApplying(true);
@@ -539,6 +578,38 @@ function DashboardPage({ onLogout, onNavigateHome }: DashboardPageProps) {
         auth: true,
         body: JSON.stringify({ jobId }),
       });
+
+      const targetJob = jobs.find((j) => j.id === jobId);
+      if (targetJob && user) {
+        const newCandidateApp: EmployerApplication = {
+          id: `app-${Date.now()}`,
+          jobId: targetJob.id,
+          status: "PENDING",
+          appliedAt: new Date().toISOString(),
+          job: {
+            id: targetJob.id,
+            title: targetJob.title,
+            location: targetJob.location,
+            jobType: targetJob.jobType,
+          },
+          applicant: {
+            id: user.id,
+            fullName: user.fullName,
+            email: user.email,
+            role: user.role,
+            avatarUrl: (user as any).avatarUrl ?? null,
+          },
+        };
+        try {
+          const existing = JSON.parse(
+            localStorage.getItem("skillloom_recent_candidate_apps") || "[]"
+          );
+          localStorage.setItem(
+            "skillloom_recent_candidate_apps",
+            JSON.stringify([newCandidateApp, ...existing])
+          );
+        } catch {}
+      }
 
       const updatedApplications = await apiRequest<ApplicationsResponse>(
         "/applications/my-applications",
@@ -1255,6 +1326,42 @@ function DashboardPage({ onLogout, onNavigateHome }: DashboardPageProps) {
               </div>
             )}
 
+
+            {hiredApplications.length > 0 && (
+              <div
+                style={{
+                  marginBottom: "24px",
+                  padding: "20px 24px",
+                  borderRadius: "16px",
+                  background: "linear-gradient(135deg, #f0fdf4, #dcfce7)",
+                  border: "1px solid #86efac",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "16px",
+                  boxShadow: "0 4px 20px rgba(22,163,74,0.12)",
+                }}
+              >
+                <span style={{ fontSize: "36px", lineHeight: 1 }}>🎉</span>
+                <div>
+                  <strong
+                    style={{
+                      display: "block",
+                      color: "#166534",
+                      fontSize: "18px",
+                      marginBottom: "4px",
+                    }}
+                  >
+                    Congratulations! You&apos;ve been hired!
+                  </strong>
+                  <p style={{ margin: 0, color: "#15803d", fontSize: "14px" }}>
+                    {hiredApplications.length === 1
+                      ? `You have been hired for "${hiredApplications[0].job?.title ?? "a position"}". Your hard work paid off — best of luck in your new role! 🚀`
+                      : `You have been hired for ${hiredApplications.length} positions. Congratulations on your outstanding success! 🚀`}
+                  </p>
+                </div>
+              </div>
+            )}
+
             <section
               className="dashboard-responsive-grid"
               style={{
@@ -1427,7 +1534,7 @@ function DashboardPage({ onLogout, onNavigateHome }: DashboardPageProps) {
                               {getStatusLabel(application.status)}
                             </span>
 
-                            {application.status !== "WITHDRAWN" && application.status !== "REJECTED" && (
+                            {application.status !== "WITHDRAWN" && application.status !== "REJECTED" && application.status !== "HIRED" && (
                               <button
                                 type="button"
                                 onClick={() => setWithdrawConfirmAppId(application.id)}
